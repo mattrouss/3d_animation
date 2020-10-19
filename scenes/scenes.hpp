@@ -6,6 +6,7 @@
 //  This can be done manually or using the automatic script
 
 #include "scenes/animation/00_default/default.hpp"
+#include "scenes/animation/00_default/random_forest.hpp"
 #include "scenes/animation/01_animation_descriptive/interpolation_position.hpp"
 #include "scenes/animation/01_animation_descriptive/articulated_hierarchy.hpp"
 #include "scenes/animation/02_simulation/sphere_collision.hpp"
