@@ -33,8 +33,8 @@ void scene_model::setup_data(std::map<std::string,GLuint>& shaders, scene_struct
 
     // Set timer bounds
     // You should adapt these extremal values to the type of interpolation
-    timer.t_min = keyframes[0].t;                   // first time of the keyframe
-    timer.t_max = keyframes[keyframes.size()-1].t;  // last time of the keyframe
+    timer.t_min = keyframes[1].t;                   // first time of the keyframe
+    timer.t_max = keyframes[keyframes.size()-2].t;  // last time of the keyframe
     timer.t = timer.t_min;
 
     // Prepare the visual elements
@@ -85,19 +85,23 @@ void scene_model::frame_draw(std::map<std::string,GLuint>& shaders, scene_struct
 
     // Preparation of data for the linear interpolation
     // Parameters used to compute the linear interpolation
+    const float t0 = keyframes[idx-1].t; // = t_{i-1}
     const float t1 = keyframes[idx  ].t; // = t_i
     const float t2 = keyframes[idx+1].t; // = t_{i+1}
+    const float t3 = keyframes[idx+2].t; // = t_{i+2}
 
+    const vec3& p0 = keyframes[idx-1].p; // = p_{i-1}
     const vec3& p1 = keyframes[idx  ].p; // = p_i
     const vec3& p2 = keyframes[idx+1].p; // = p_{i+1}
+    const vec3& p3 = keyframes[idx+2].p; // = p_{i+2}
 
 
 
     // Compute the linear interpolation here
-    const vec3 p = linear_interpolation(t,t1,t2,p1,p2);
+    //const vec3 p = linear_interpolation(t,t1,t2,p1,p2);
 
     // Create and call a function cardinal_spline_interpolation(...) instead
-    // ...
+    const vec3 p = cardinal_spline_interpolation(t, t0, t1, t2, t3, p0, p1, p2, p3);
 
 
 
@@ -222,6 +226,8 @@ void scene_model::set_gui()
     ImGui::SliderFloat("Time", &timer.t, timer.t_min, timer.t_max);
     ImGui::SliderFloat("Time scale", &timer.scale, 0.1f, 3.0f);
 
+    ImGui::SliderFloat("Curve tension", &mu, 0.0f, 2.0f);
+
     ImGui::Text("Display: "); ImGui::SameLine();
     ImGui::Checkbox("keyframe", &gui_scene.display_keyframe); ImGui::SameLine();
     ImGui::Checkbox("polygon", &gui_scene.display_polygon);
@@ -263,6 +269,18 @@ static vec3 linear_interpolation(float t, float t1, float t2, const vec3& p1, co
     const vec3 p = (1-alpha)*p1 + alpha*p2;
 
     return p;
+}
+
+vec3 scene_model::cardinal_spline_interpolation(float t, float t0, float t1, float t2, float t3, const vec3& p0, const vec3& p1, const vec3& p2, const vec3& p3)
+{
+    const float s = (t-t1)/(t2-t1);
+
+    const vec3 d1 = (mu / (t2 - t0)) * (p2 - p0);
+    const vec3 d2 = (mu / (t3 - t1)) * (p3 - p1);
+
+    const float s_sqr = std::pow(s, 2);
+    const float s_cub = std::pow(s, 3);
+    return (2 * s_cub - 3 * s_sqr + 1) * p1 + (s_cub - 2 * s_sqr + s) * d1 + (-2 * s_cub + 3 * s_sqr) * p2 + (s_cub - s_sqr) * d2;
 }
 
 

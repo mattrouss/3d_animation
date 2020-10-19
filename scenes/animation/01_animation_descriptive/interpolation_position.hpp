@@ -18,6 +18,9 @@ struct gui_scene_structure{
 struct scene_model : scene_base
 {
 
+
+    vcl::vec3 cardinal_spline_interpolation(float t, float t0, float t1, float t2, float t3, const vcl::vec3& p0, const vcl::vec3& p1, const vcl::vec3& p2, const vcl::vec3& p3);
+
     void setup_data(std::map<std::string,GLuint>& shaders, scene_structure& scene, gui_structure& gui);
     void frame_draw(std::map<std::string,GLuint>& shaders, scene_structure& scene, gui_structure& gui);
 
@@ -42,6 +45,8 @@ struct scene_model : scene_base
 
     gui_scene_structure gui_scene;
     vcl::timer_interval timer;
+
+    float mu; // Curve tension for spline interpolation
 
 };
 
