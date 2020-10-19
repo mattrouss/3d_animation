@@ -31,6 +31,8 @@ struct scene_model : scene_base
     This structure contains the data that are specific to the given part.
     Every part may use different data. */
 
+    bool is_wireframe = false;
+
     // Visual representation of a plane
     vcl::mesh_drawable plane;
 
@@ -42,6 +44,9 @@ struct scene_model : scene_base
 
     // Visual representation of a curve
     vcl::curve_drawable curve;
+
+    // Visual representation of a sphere
+    vcl::mesh_drawable sphere;
 
     // Visual representation of a set of segments
     vcl::curve_drawable polygon_segments;

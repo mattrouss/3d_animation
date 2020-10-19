@@ -51,7 +51,14 @@ void scene_model::setup_data(std::map<std::string, GLuint>& shaders, scene_struc
     curve = curve_drawable(curve_cpu);
     curve.uniform.color = { 0,1,0 };
     curve.shader = shaders["curve"];
+
     // **************************************** //
+    // Create a sphere
+    // **************************************** //
+    
+    sphere = mesh_drawable(mesh_primitive_sphere()); // Create a default sphere model
+    sphere.uniform.color = { 0.8f,0.2f,0.1f }; // can set the color (R,G,B) used in the shader
+    sphere.shader = shaders["mesh"];  // Associate its default shader
 
 
 
@@ -130,6 +137,15 @@ void scene_model::frame_draw(std::map<std::string, GLuint>& shaders, scene_struc
     curve.uniform.transform.rotation = rotation_from_axis_angle_mat3({ 0,0,1 }, time);
     draw(curve, scene.camera);
 
+    // Display sphere
+    // ********************************************* //
+    sphere.uniform.transform.scaling = 0.2f;
+    sphere.uniform.transform.translation = {-1,1,-2};
+    if(is_wireframe)
+        draw(sphere, scene.camera, shaders["wireframe"]);
+    else
+        draw(sphere, scene.camera);
+
 
 
 
@@ -147,6 +163,8 @@ void scene_model::set_gui()
     bool const start = ImGui::Button("Start");
     if (stop)  timer.stop();
     if (start) timer.start();
+
+    ImGui::Checkbox("Wireframe", &is_wireframe);
 
 
 }
