@@ -15,6 +15,12 @@ struct particle_structure
     float r;     // Radius
 };
 
+struct plane_structure
+{
+    vcl::vec3 a; // Plane center
+    vcl::vec3 n; // Plane normal
+};
+
 struct gui_scene_structure
 {
     bool add_sphere = true;
@@ -23,6 +29,8 @@ struct gui_scene_structure
 
 struct scene_model : scene_base
 {
+
+    vcl::vec3 get_collision_velocity(const vcl::vec3& velocity, const vcl::vec3& plane_normal);
 
     void setup_data(std::map<std::string,GLuint>& shaders, scene_structure& scene, gui_structure& gui);
     void frame_draw(std::map<std::string,GLuint>& shaders, scene_structure& scene, gui_structure& gui);
@@ -35,12 +43,16 @@ struct scene_model : scene_base
 
 
     std::vector<particle_structure> particles;
+    std::vector<plane_structure> planes;
 
     vcl::mesh_drawable sphere;      // Visual display of particles
     vcl::segments_drawable borders; // Visual display of borders
 
     vcl::timer_event timer;
     gui_scene_structure gui_scene;
+
+    float alpha;
+    float beta;
 };
 
 
