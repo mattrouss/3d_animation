@@ -56,7 +56,7 @@ struct scene_model : scene_base
     float beta;
     float mu;
 
-    float min_relative_speed = 1E-3;
+    float min_relative_speed = 1E-4;
 };
 
 

@@ -61,18 +61,17 @@ void scene_model::compute_time_step(float dt)
                 vec3 const& u = (p1.p - p2.p) / dist;
 
                 if (norm(p1.v - p2.v) > min_relative_speed) {
-                    float j = 2 * (p1.m * p2.m) / (p1.m + p2.m) * dot(v2 - v1, u);
-                    v1 = alpha * v1 - (beta * j) / p1.m * u;
-                    v2 = alpha * v2 + (beta * j) / p2.m * u;
-
+                    float j = dot(v2 - v1, u);
+                    v1 = alpha * v1 + (beta * j) * u;
+                    v2 = alpha * v2 - (beta * j) * u;
                 } else {
                     v1 = mu * v1;
                     v2 = mu * v2;
                 }
 
                 float d = p1.r + p2.r - dist;
-                p1.p = p1.p + 0.5f * d * u;
-                p2.p = p2.p - 0.5f * d * u;
+                p1.p = p1.p + 0.5 * d * u;
+                p2.p = p2.p - 0.5 * d * u;
             }
 
         }
