@@ -13,6 +13,7 @@ struct particle_structure
 
     vcl::vec3 c; // Color
     float r;     // Radius
+    float m;     // Mass
 };
 
 struct plane_structure
@@ -53,6 +54,9 @@ struct scene_model : scene_base
 
     float alpha;
     float beta;
+    float mu;
+
+    float min_relative_speed = 1E-3;
 };
 
 

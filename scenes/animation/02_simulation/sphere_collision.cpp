@@ -34,7 +34,6 @@ void scene_model::compute_time_step(float dt)
     for(size_t k=0; k<N; ++k) {
         particle_structure& particle = particles[k];
         vec3& v = particle.v;
-        vec3 previous_p = particle.p;
         vec3& p = particle.p;
         vec3 const& f = particle.f;
 
@@ -44,8 +43,40 @@ void scene_model::compute_time_step(float dt)
     }
 
     // Collisions between spheres
-    // ... to do
-    
+    for (size_t i = 0; i < N; ++i)
+    {
+        particle_structure& p1 = particles[i];
+        for (size_t j = 0; j < N; ++j)
+        {
+            if (i == j)
+                continue;
+
+            particle_structure& p2 = particles[j];
+            // Collision detection
+            float dist = norm(p1.p - p2.p);
+            if (dist <= p1.r + p2.r)
+            {
+                vec3& v1 = p1.v;
+                vec3& v2 = p2.v;
+                vec3 const& u = (p1.p - p2.p) / dist;
+
+                if (norm(p1.v - p2.v) > min_relative_speed) {
+                    float j = 2 * (p1.m * p2.m) / (p1.m + p2.m) * dot(v2 - v1, u);
+                    v1 = alpha * v1 - (beta * j) / p1.m * u;
+                    v2 = alpha * v2 + (beta * j) / p2.m * u;
+
+                } else {
+                    v1 = mu * v1;
+                    v2 = mu * v2;
+                }
+
+                float d = p1.r + p2.r - dist;
+                p1.p = p1.p + 0.5f * d * u;
+                p2.p = p2.p - 0.5f * d * u;
+            }
+
+        }
+    }
     // Collisions with cube
     for(size_t k=0; k<N; ++k) {
         particle_structure& particle = particles[k];
@@ -80,6 +111,7 @@ void scene_model::create_new_particle()
         particle_structure new_particle;
 
         new_particle.r = 0.08f;
+        new_particle.m = 1.0f;
         new_particle.c = color_lut[int(rand_interval()*color_lut.size())];
 
         // Initial position
@@ -115,6 +147,7 @@ void scene_model::setup_data(std::map<std::string,GLuint>& shaders, scene_struct
 
     alpha = 0.5f;
     beta = 0.5f;
+    mu = 0.5;
 
     sphere = mesh_drawable( mesh_primitive_sphere(1.0f));
     sphere.shader = shaders["mesh"];
@@ -137,8 +170,9 @@ void scene_model::set_gui()
     // Can set the speed of the animation
     ImGui::SliderFloat("Time scale", &timer.scale, 0.05f, 2.0f, "%.2f s");
     ImGui::SliderFloat("Interval create sphere", &gui_scene.time_interval_new_sphere, 0.05f, 2.0f, "%.2f s");
-    ImGui::SliderFloat("Friction Coefficient", &alpha, 0.0f, 1.0f);
-    ImGui::SliderFloat("Impact Coefficient", &beta, 0.0f, 1.0f);
+    ImGui::SliderFloat("Friction Coefficient Alpha", &alpha, 0.0f, 1.0f);
+    ImGui::SliderFloat("Impact Coefficient Beta", &beta, 0.0f, 1.0f);
+    ImGui::SliderFloat("Static Coeff Mu", &mu, 0.0f, 1.0f);
     ImGui::Checkbox("Add sphere", &gui_scene.add_sphere);
 
     bool stop_anim  = ImGui::Button("Stop"); ImGui::SameLine();
