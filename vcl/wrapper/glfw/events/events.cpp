@@ -28,6 +28,10 @@ bool glfw_key_ctrl_pressed(GLFWwindow* window)
 {
     return (glfwGetKey(window, GLFW_KEY_LEFT_CONTROL) || glfwGetKey(window, GLFW_KEY_RIGHT_CONTROL));
 }
+bool glfw_key_alt_pressed(GLFWwindow* window)
+{
+    return (glfwGetKey(window, GLFW_KEY_LEFT_ALT) || glfwGetKey(window, GLFW_KEY_RIGHT_ALT));
+}
 
 
 vec2 glfw_cursor_coordinates_window(GLFWwindow* window)

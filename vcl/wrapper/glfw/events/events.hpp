@@ -16,6 +16,7 @@ bool glfw_mouse_released_right(GLFWwindow* window);
 
 bool glfw_key_shift_pressed(GLFWwindow* window);
 bool glfw_key_ctrl_pressed(GLFWwindow* window);
+bool glfw_key_alt_pressed(GLFWwindow* window);
 
 /** Coordinates of the cursor position on screen normalized in [0,1] */
 vec2 glfw_cursor_coordinates_window(GLFWwindow* window);

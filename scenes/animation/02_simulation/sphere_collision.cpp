@@ -153,15 +153,95 @@ void scene_model::setup_data(std::map<std::string,GLuint>& shaders, scene_struct
 
     planes = {{{1.0f, 0.0f, 0.0f},{-1.0f, 0.0f, 0.0f}}, {{0.0f, 1.0f, 0.0f},{0.0f, -1.0f, 0.0f}}, {{0.0f, 0.0f, 1.0f}, {0.0f, 0.0f, -1.0f}}, {{-1.0f, 0.0f, 0.0f},{1.0f, 0.0f, 0.0f}}, {{0.0f, -1.0f, 0.0f},{0.0f, 1.0f, 0.0f}}, {{0.0f, 0.0f, -1.0f},{0.0f, 0.0f, 1.0f}}};
 
-    std::vector<vec3> borders_segments = {{-1,-1,-1},{1,-1,-1}, {1,-1,-1},{1,1,-1}, {1,1,-1},{-1,1,-1}, {-1,1,-1},{-1,-1,-1},
+    border_segments = {{-1,-1,-1},{1,-1,-1}, {1,-1,-1},{1,1,-1}, {1,1,-1},{-1,1,-1}, {-1,1,-1},{-1,-1,-1},
         {-1,-1,1} ,{1,-1,1},  {1,-1,1}, {1,1,1},  {1,1,1}, {-1,1,1},  {-1,1,1}, {-1,-1,1},
         {-1,-1,-1},{-1,-1,1}, {1,-1,-1},{1,-1,1}, {1,1,-1},{1,1,1},   {-1,1,-1},{-1,1,1}};
-    borders = segments_gpu(borders_segments);
+    borders = segments_drawable(border_segments);
     borders.uniform.color = {0,0,0};
     borders.shader = shaders["curve"];
 
+    curve_shader_id = shaders["curve"];
+
 }
 
+void scene_model::mouse_move(scene_structure& scene, GLFWwindow* window)
+{
+
+    const bool mouse_click_left  = glfw_mouse_pressed_left(window);
+    const bool key_shift = glfw_key_shift_pressed(window);
+    const bool key_alt = glfw_key_alt_pressed(window);
+
+    const vec2 cursor = glfw_cursor_coordinates_window(window);
+    float x1 = cursor.x;
+    float y1 = cursor.y;
+    if(mouse_click_left && key_shift)
+    {
+        // Translate the box to the new pointed mouse position within the camera plane
+        // ************************************************************************ //
+        float tx = x1 - x0;
+        float ty = y1 - y0;
+
+        apply_box_translation(tx, ty, scene.camera);
+
+        x0 = x1;
+        y0 = y1;
+
+    }
+    else if (mouse_click_left && key_alt)
+    {
+        float tx = x1 - x0;
+        float ty = y1 - y0;
+        apply_box_rotation(tx, ty, scene.camera);
+
+    }
+    else
+    {
+        x0 = x1;
+        y0 = y1;
+    }
+}
+
+
+void scene_model::apply_box_translation(float tx, float ty, camera_scene const& cam) {
+    float alpha = cam.scale / cam.scale0;
+    vec3 translation = (alpha+0.5f) * cam.orientation * vec3{tx, ty, 0.0f};
+
+    for (std::vector<vec3>::iterator it = border_segments.begin(); it != border_segments.end(); it++)
+        *it += translation;
+
+    for (std::vector<plane_structure>::iterator it = planes.begin(); it != planes.end(); it++)
+    {
+        it->a += translation;
+        it->n += translation;
+    }
+
+    borders.data = segments_gpu(border_segments);
+
+}
+
+void scene_model::apply_box_rotation(float tx, float ty, camera_scene const& cam)
+{
+    const mat3 Rx = { 1,      0        ,     0           ,
+                      0,std::cos(tx), -std::sin(tx),
+                      0,std::sin(tx),  std::cos(tx)};
+
+    const mat3 Rz = { std::cos(ty) , -std::sin(ty) , 0,
+                      std::sin(ty) ,  std::cos(ty) , 0,
+                      0             ,      0         , 1};
+
+    const mat3 rotation_matrix =  Rx * Rz;
+
+    for (std::vector<vec3>::iterator it = border_segments.begin(); it != border_segments.end(); it++)
+        *it = rotation_matrix * *it;
+
+    for (std::vector<plane_structure>::iterator it = planes.begin(); it != planes.end(); it++)
+    {
+        it->a += rotation_matrix * it->a;
+        it->n += rotation_matrix * it->n;
+    }
+    borders.data = segments_gpu(border_segments);
+
+}
 
 
 void scene_model::set_gui()

@@ -55,6 +55,7 @@ void camera_control_glfw::update_mouse_move(camera_scene& camera, GLFWwindow* wi
 
         const float tx =  (x1-x0)/w;
         const float ty = -(y1-y0)/h;
+
         camera.apply_translation_in_screen_plane( tx, ty );
 
     }

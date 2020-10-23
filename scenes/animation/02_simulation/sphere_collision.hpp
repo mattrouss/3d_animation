@@ -36,6 +36,9 @@ struct scene_model : scene_base
     void setup_data(std::map<std::string,GLuint>& shaders, scene_structure& scene, gui_structure& gui);
     void frame_draw(std::map<std::string,GLuint>& shaders, scene_structure& scene, gui_structure& gui);
 
+    void mouse_move(scene_structure& scene, GLFWwindow* window);
+    void apply_box_translation(float tx, float ty, vcl::camera_scene const& cam);
+    void apply_box_rotation(float tx, float ty, vcl::camera_scene const& cam);
     void set_gui();
 
     void compute_time_step(float dt);
@@ -48,9 +51,18 @@ struct scene_model : scene_base
 
     vcl::mesh_drawable sphere;      // Visual display of particles
     vcl::segments_drawable borders; // Visual display of borders
+    std::vector<vcl::vec3> border_segments;
 
     vcl::timer_event timer;
     gui_scene_structure gui_scene;
+
+
+    GLint curve_shader_id;
+    // Previous mouse x position
+    float x0 = 0.0f;
+
+    // Previous mouse y position
+    float y0 = 0.0f;
 
     float alpha;
     float beta;
