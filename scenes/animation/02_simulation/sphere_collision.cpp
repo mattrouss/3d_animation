@@ -212,7 +212,6 @@ void scene_model::apply_box_translation(float tx, float ty, camera_scene const& 
     for (std::vector<plane_structure>::iterator it = planes.begin(); it != planes.end(); it++)
     {
         it->a += translation;
-        it->n += translation;
     }
 
     borders.data = segments_gpu(border_segments);
