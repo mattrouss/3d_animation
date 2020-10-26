@@ -7,9 +7,6 @@
 using namespace vcl;
 
 
-static void set_gui(timer_basic& timer);
-
-
 /** Compute spring force applied on particle pi from particle pj */
 vec3 spring_force(const vec3& pi, const vec3& pj, float L0, float K)
 {
@@ -20,6 +17,18 @@ vec3 spring_force(const vec3& pi, const vec3& pj, float L0, float K)
 
 
 void scene_model::setup_data(std::map<std::string,GLuint>& , scene_structure& , gui_structure& )
+{
+
+    initialize();
+    std::vector<vec3> borders_segments = {{-1,-1,-1},{1,-1,-1}, {1,-1,-1},{1,1,-1}, {1,1,-1},{-1,1,-1}, {-1,1,-1},{-1,-1,-1},
+                                          {-1,-1,1} ,{1,-1,1},  {1,-1,1}, {1,1,1},  {1,1,1}, {-1,1,1},  {-1,1,1}, {-1,-1,1},
+                                          {-1,-1,-1},{-1,-1,1}, {1,-1,-1},{1,-1,1}, {1,1,-1},{1,1,1},   {-1,1,-1},{-1,1,1}};
+    borders = borders_segments;
+    borders.uniform.color = {0,0,0};
+
+}
+
+void scene_model::initialize()
 {
     // Initial position and speed of particles
     // ******************************************* //
@@ -32,9 +41,6 @@ void scene_model::setup_data(std::map<std::string,GLuint>& , scene_structure& , 
     pC.p = {1.0f,0,0};  // Initial position of particle C
     pC.v = {0,0,0};     // Initial speed of particle C
 
-    L0 = 0.4f; // Rest length between A and B
-
-
     // Display elements
     // ******************************************* //
     segment_drawer.init();
@@ -43,12 +49,6 @@ void scene_model::setup_data(std::map<std::string,GLuint>& , scene_structure& , 
     sphere = mesh_primitive_sphere();
     sphere.uniform.transform.scaling = 0.05f;
 
-
-    std::vector<vec3> borders_segments = {{-1,-1,-1},{1,-1,-1}, {1,-1,-1},{1,1,-1}, {1,1,-1},{-1,1,-1}, {-1,1,-1},{-1,-1,-1},
-                                          {-1,-1,1} ,{1,-1,1},  {1,-1,1}, {1,1,1},  {1,1,1}, {-1,1,1},  {-1,1,1}, {-1,-1,1},
-                                          {-1,-1,-1},{-1,-1,1}, {1,-1,-1},{1,-1,1}, {1,1,-1},{1,1,1},   {-1,1,-1},{-1,1,1}};
-    borders = borders_segments;
-    borders.uniform.color = {0,0,0};
 
 }
 
@@ -67,9 +67,6 @@ void scene_model::frame_draw(std::map<std::string,GLuint>& shaders, scene_struct
 
     // Simulation parameters
     const float m  = 0.05f;        // particle mass
-    const float K  = 5.0f;         // spring stiffness
-    const float mu = 0.005f;       // damping coefficient
-
     const vec3 g   = {0,-9.81f,0}; // gravity
 
     // Forces
@@ -77,10 +74,11 @@ void scene_model::frame_draw(std::map<std::string,GLuint>& shaders, scene_struct
     const vec3 f_spring_bc  = spring_force(pC.p, pB.p, L0, K);
     const vec3 f_spring_cb  = spring_force(pB.p, pC.p, L0, K);
     const vec3 f_weight =  m * g;
-    const vec3 f_damping = {0,mu,0}; // TO DO: correct this force value
-    const vec3 F_ab = f_spring_ab+f_weight+f_damping;
-    const vec3 F_bc = f_spring_bc+f_weight+f_damping;
-    const vec3 F_cb = f_spring_cb+f_weight+f_damping;
+    const vec3 f_damping_b = -mu * pB.v;
+    const vec3 f_damping_c = -mu * pC.v;
+    const vec3 F_ab = f_spring_ab+f_weight+f_damping_b;
+    const vec3 F_bc = f_spring_bc+f_weight+f_damping_c;
+    const vec3 F_cb = f_spring_cb+f_weight;
 
     // Numerical Integration (Verlet)
     {
@@ -134,18 +132,23 @@ void scene_model::frame_draw(std::map<std::string,GLuint>& shaders, scene_struct
 
 
 /** Part specific GUI drawing */
-static void set_gui(timer_basic& timer)
+void scene_model::set_gui(timer_basic& timer)
 {
     // Can set the speed of the animation
     float scale_min = 0.05f;
     float scale_max = 2.0f;
     ImGui::SliderScalar("Time scale", ImGuiDataType_Float, &timer.scale, &scale_min, &scale_max, "%.2f s");
+    ImGui::SliderFloat("Spring Stiffness", &K, 0.0f, 50.0f, "%.2f");
+    ImGui::SliderFloat("Damping coefficient", &mu, 0.0f, 1.0f, "%.3f");
 
     // Start and stop animation
     if (ImGui::Button("Stop"))
         timer.stop();
     if (ImGui::Button("Start"))
         timer.start();
+
+    bool const restart = ImGui::Button("Restart");
+    if(restart) initialize();
 
 }
 
