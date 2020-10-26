@@ -38,7 +38,7 @@ struct scene_model : scene_base
 
     void mouse_move(scene_structure& scene, GLFWwindow* window);
     void apply_box_translation(float tx, float ty, vcl::camera_scene const& cam);
-    void apply_box_rotation(float tx, float ty, vcl::camera_scene const& cam);
+    void apply_box_rotation(float tx, float ty);
     void set_gui();
 
     void compute_time_step(float dt);

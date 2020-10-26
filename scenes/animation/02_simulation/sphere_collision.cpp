@@ -54,7 +54,7 @@ void scene_model::compute_time_step(float dt)
             particle_structure& p2 = particles[j];
             // Collision detection
             float dist = norm(p1.p - p2.p);
-            if (dist <= p1.r + p2.r)
+            if (dist < p1.r + p2.r)
             {
                 vec3& v1 = p1.v;
                 vec3& v2 = p2.v;
@@ -191,7 +191,7 @@ void scene_model::mouse_move(scene_structure& scene, GLFWwindow* window)
     {
         float tx = x1 - x0;
         float ty = y1 - y0;
-        apply_box_rotation(tx, ty, scene.camera);
+        apply_box_rotation(tx, ty);
 
     }
     else
@@ -218,7 +218,7 @@ void scene_model::apply_box_translation(float tx, float ty, camera_scene const& 
 
 }
 
-void scene_model::apply_box_rotation(float tx, float ty, camera_scene const& cam)
+void scene_model::apply_box_rotation(float tx, float ty)
 {
     const mat3 Rx = { 1,      0        ,     0           ,
                       0,std::cos(tx), -std::sin(tx),
