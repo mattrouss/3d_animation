@@ -29,6 +29,9 @@ void scene_model::setup_data(std::map<std::string,GLuint>& , scene_structure& , 
     pB.p = {0.5f,0,0};  // Initial position of particle B
     pB.v = {0,0,0};     // Initial speed of particle B
 
+    pC.p = {1.0f,0,0};  // Initial position of particle C
+    pC.v = {0,0,0};     // Initial speed of particle C
+
     L0 = 0.4f; // Rest length between A and B
 
 
@@ -63,31 +66,38 @@ void scene_model::frame_draw(std::map<std::string,GLuint>& shaders, scene_struct
     float dt = timer.scale*0.01f;
 
     // Simulation parameters
-    const float m  = 0.01f;        // particle mass
+    const float m  = 0.05f;        // particle mass
     const float K  = 5.0f;         // spring stiffness
     const float mu = 0.005f;       // damping coefficient
 
     const vec3 g   = {0,-9.81f,0}; // gravity
 
     // Forces
-    const vec3 f_spring  = spring_force(pB.p, pA.p, L0, K);
+    const vec3 f_spring_ab  = spring_force(pB.p, pA.p, L0, K);
+    const vec3 f_spring_bc  = spring_force(pC.p, pB.p, L0, K);
+    const vec3 f_spring_cb  = spring_force(pB.p, pC.p, L0, K);
     const vec3 f_weight =  m * g;
-    const vec3 f_damping = {0,0,0}; // TO DO: correct this force value
-    const vec3 F = f_spring+f_weight+f_damping;
+    const vec3 f_damping = {0,mu,0}; // TO DO: correct this force value
+    const vec3 F_ab = f_spring_ab+f_weight+f_damping;
+    const vec3 F_bc = f_spring_bc+f_weight+f_damping;
+    const vec3 F_cb = f_spring_cb+f_weight+f_damping;
 
     // Numerical Integration (Verlet)
     {
-        // Only particle B should be updated
-        vec3& p = pB.p; // position of particle
-        vec3& v = pB.v; // speed of particle
+        // Only particles B and C should be updated
+        vec3& posB = pB.p; // position of particle
+        vec3& vB = pB.v; // speed of particle
 
-        p = p + dt * v;
-        v = v + dt * F / m;
-        
+        vec3& posC = pC.p; // position of particle
+        vec3& vC = pC.v; // speed of particle
+
+        vB = vB + dt * (F_ab + F_cb) / m;
+        posB = posB + dt * vB;
+
+        vC = vC + dt * F_bc / m;
+        posC = posC + dt * vC;
         
     }
-
-
 
 
     // Display of the result
@@ -102,9 +112,19 @@ void scene_model::frame_draw(std::map<std::string,GLuint>& shaders, scene_struct
     sphere.uniform.color = {1,0,0};
     draw(sphere, scene.camera, shaders["mesh"]);
 
+    // particle pc
+    sphere.uniform.transform.translation = pC.p;
+    sphere.uniform.color = {1,1,0};
+    draw(sphere, scene.camera, shaders["mesh"]);
+
     // Spring pa-pb
     segment_drawer.uniform_parameter.p1 = pA.p;
     segment_drawer.uniform_parameter.p2 = pB.p;
+    segment_drawer.draw(shaders["segment_im"],scene.camera);
+
+    // Spring pb-pc
+    segment_drawer.uniform_parameter.p1 = pB.p;
+    segment_drawer.uniform_parameter.p2 = pC.p;
     segment_drawer.draw(shaders["segment_im"],scene.camera);
 
 
