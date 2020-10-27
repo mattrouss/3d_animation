@@ -55,9 +55,6 @@ void scene_model::initialize()
 }
 
 
-
-
-
 void scene_model::frame_draw(std::map<std::string,GLuint>& shaders, scene_structure& scene, gui_structure& )
 {
     timer.update();
@@ -67,6 +64,11 @@ void scene_model::frame_draw(std::map<std::string,GLuint>& shaders, scene_struct
     {
         initialize();
         N_prev = N;
+    }
+    if (k != k_prev)
+    {
+        initialize();
+        k_prev = k;
     }
 
 
@@ -97,10 +99,12 @@ void scene_model::frame_draw(std::map<std::string,GLuint>& shaders, scene_struct
         vec3 F = {};
         if (i == 0)
             F += spring_force(p, p_root.p, L0, K);
-        if (i > 0)
-            F += spring_force(p, points[i - 1].p, L0, K);
-        if (i < points.size() - 1)
-            F += spring_force(p, points[i + 1].p, L0, K);
+        for (size_t j = 1; j < k+1; ++j)
+            if ((int)(i - j) >= 0)
+                F += spring_force(p, points[i - j].p, L0, K);
+        for (size_t j = 1; j < k+1; ++j)
+            if (i + j <= points.size() - 1)
+                F += spring_force(p, points[i + j].p, L0, K);
 
         F += -mu * v;
         F += f_weight;
@@ -144,8 +148,12 @@ void scene_model::set_gui(timer_basic& timer)
     size_t N_min = 10;
     size_t N_max = 50;
 
+    size_t k_min = 1;
+    size_t k_max = 5;
+
     ImGui::SliderScalar("Time scale", ImGuiDataType_Float, &timer.scale, &scale_min, &scale_max, "%.3f s");
     ImGui::SliderScalar("Number of points", ImGuiDataType_U32, &N, &N_min, &N_max);
+    ImGui::SliderScalar("Number of dependent points", ImGuiDataType_U32, &k, &k_min, &k_max);
     ImGui::SliderFloat("Rest Length", &L0, 0.0f, 1.0f, "%.2f");
     ImGui::SliderFloat("Spring Stiffness", &K, 0.0f, 50.0f, "%.2f");
     ImGui::SliderFloat("Damping coefficient", &mu, 0.0f, 1.0f, "%.3f");

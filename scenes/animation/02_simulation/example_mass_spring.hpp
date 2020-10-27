@@ -24,8 +24,12 @@ struct scene_model : scene_base
     float L0 = 0.2f;                // length of spring at rest
     float K = 5.0f;                 // spring stiffness
     float mu = 0.1f;       // damping coefficient
+
     size_t N = 10;
     size_t N_prev = 10;
+
+    size_t k = 1;
+    size_t k_prev = 1;
 
 
     vcl::mesh_drawable sphere;      // Visual display of particles
