@@ -30,16 +30,18 @@ void scene_model::setup_data(std::map<std::string,GLuint>& , scene_structure& , 
 
 void scene_model::initialize()
 {
+    p_root.p = {0,0,0};     // Initial position of particle A
+    p_root.v = {0,0,0};     // Initial speed of particle A
+
+    points.clear();
+    points.resize(N);
     // Initial position and speed of particles
     // ******************************************* //
-    pA.p = {0,0,0};     // Initial position of particle A
-    pB.v = {0,0,0};     // Initial speed of particle A
-
-    pB.p = {0.5f,0,0};  // Initial position of particle B
-    pB.v = {0,0,0};     // Initial speed of particle B
-
-    pC.p = {1.0f,0,0};  // Initial position of particle C
-    pC.v = {0,0,0};     // Initial speed of particle C
+    for (size_t i = 0; i < N; i++)
+    {
+        points[i].p = {0.5f * (float)(i + 1), 0, 0};
+        points[i].v = {0, 0, 0};
+    }
 
     // Display elements
     // ******************************************* //
@@ -61,6 +63,12 @@ void scene_model::frame_draw(std::map<std::string,GLuint>& shaders, scene_struct
     timer.update();
     set_gui(timer);
 
+    if (N != N_prev)
+    {
+        initialize();
+        N_prev = N;
+    }
+
 
     // Simulation time step (dt)
     float dt = timer.scale*0.01f;
@@ -70,62 +78,57 @@ void scene_model::frame_draw(std::map<std::string,GLuint>& shaders, scene_struct
     const vec3 g   = {0,-9.81f,0}; // gravity
 
     // Forces
-    const vec3 f_spring_ab  = spring_force(pB.p, pA.p, L0, K);
-    const vec3 f_spring_bc  = spring_force(pC.p, pB.p, L0, K);
-    const vec3 f_spring_cb  = spring_force(pB.p, pC.p, L0, K);
     const vec3 f_weight =  m * g;
-    const vec3 f_damping_b = -mu * pB.v;
-    const vec3 f_damping_c = -mu * pC.v;
-    const vec3 F_ab = f_spring_ab+f_weight+f_damping_b;
-    const vec3 F_bc = f_spring_bc+f_weight+f_damping_c;
-    const vec3 F_cb = f_spring_cb+f_weight;
+
+
+    // Draw root sphere
+    sphere.uniform.transform.translation = p_root.p;
+    sphere.uniform.color = {0,0,1};
+    draw(sphere, scene.camera, shaders["mesh"]);
+
+    sphere.uniform.color = {1,0,0};
 
     // Numerical Integration (Verlet)
+    for (size_t i = 0; i < points.size(); ++i)
     {
-        // Only particles B and C should be updated
-        vec3& posB = pB.p; // position of particle
-        vec3& vB = pB.v; // speed of particle
+        vec3& p = points[i].p; // position of particle
+        vec3& v = points[i].v; // speed of particle
 
-        vec3& posC = pC.p; // position of particle
-        vec3& vC = pC.v; // speed of particle
+        vec3 F = {};
+        if (i == 0)
+            F += spring_force(p, p_root.p, L0, K);
+        if (i > 0)
+            F += spring_force(p, points[i - 1].p, L0, K);
+        if (i < points.size() - 1)
+            F += spring_force(p, points[i + 1].p, L0, K);
 
-        vB = vB + dt * (F_ab + F_cb) / m;
-        posB = posB + dt * vB;
+        F += -mu * v;
+        F += f_weight;
 
-        vC = vC + dt * F_bc / m;
-        posC = posC + dt * vC;
+        v += dt * F / m;
+        p += dt * v;
         
+        // Display of the result
+        sphere.uniform.transform.translation = p;
+        draw(sphere, scene.camera, shaders["mesh"]);
     }
 
-
-    // Display of the result
-
-    // particle pa
-    sphere.uniform.transform.translation = pA.p;
-    sphere.uniform.color = {0,0,0};
-    draw(sphere, scene.camera, shaders["mesh"]);
-
-    // particle pb
-    sphere.uniform.transform.translation = pB.p;
-    sphere.uniform.color = {1,0,0};
-    draw(sphere, scene.camera, shaders["mesh"]);
-
-    // particle pc
-    sphere.uniform.transform.translation = pC.p;
-    sphere.uniform.color = {1,1,0};
-    draw(sphere, scene.camera, shaders["mesh"]);
-
-    // Spring pa-pb
-    segment_drawer.uniform_parameter.p1 = pA.p;
-    segment_drawer.uniform_parameter.p2 = pB.p;
+    
+    // Draw spring between root and 0
+    segment_drawer.uniform_parameter.p1 = p_root.p;
+    segment_drawer.uniform_parameter.p2 = points[0].p;
     segment_drawer.draw(shaders["segment_im"],scene.camera);
 
-    // Spring pb-pc
-    segment_drawer.uniform_parameter.p1 = pB.p;
-    segment_drawer.uniform_parameter.p2 = pC.p;
-    segment_drawer.draw(shaders["segment_im"],scene.camera);
+    for (size_t i = 0; i < points.size(); ++i)
+    {
+        if (i >= points.size() - 1)
+            continue;
 
-
+        // Draw spring between points i and i + 1
+        segment_drawer.uniform_parameter.p1 = points[i].p;
+        segment_drawer.uniform_parameter.p2 = points[i + 1].p;
+        segment_drawer.draw(shaders["segment_im"],scene.camera);
+    }
 
     draw(borders, scene.camera, shaders["curve"]);
 }
@@ -137,7 +140,13 @@ void scene_model::set_gui(timer_basic& timer)
     // Can set the speed of the animation
     float scale_min = 0.05f;
     float scale_max = 2.0f;
-    ImGui::SliderScalar("Time scale", ImGuiDataType_Float, &timer.scale, &scale_min, &scale_max, "%.2f s");
+
+    size_t N_min = 10;
+    size_t N_max = 50;
+
+    ImGui::SliderScalar("Time scale", ImGuiDataType_Float, &timer.scale, &scale_min, &scale_max, "%.3f s");
+    ImGui::SliderScalar("Number of points", ImGuiDataType_U32, &N, &N_min, &N_max);
+    ImGui::SliderFloat("Rest Length", &L0, 0.0f, 1.0f, "%.2f");
     ImGui::SliderFloat("Spring Stiffness", &K, 0.0f, 50.0f, "%.2f");
     ImGui::SliderFloat("Damping coefficient", &mu, 0.0f, 1.0f, "%.3f");
 

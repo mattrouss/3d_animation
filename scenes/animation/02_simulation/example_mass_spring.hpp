@@ -19,12 +19,13 @@ struct scene_model : scene_base
     void set_gui(vcl::timer_basic& timer);
 
 
-    particle_element pA;
-    particle_element pB;
-    particle_element pC;
-    float L0 = 0.4f;                // length of spring at rest
+    particle_element p_root;
+    std::vector<particle_element> points;
+    float L0 = 0.2f;                // length of spring at rest
     float K = 5.0f;                 // spring stiffness
     float mu = 0.1f;       // damping coefficient
+    size_t N = 10;
+    size_t N_prev = 10;
 
 
     vcl::mesh_drawable sphere;      // Visual display of particles
