@@ -89,7 +89,19 @@ void scene_model::compute_forces()
 void scene_model::collision_constraints()
 {
     // Handle collisions here (with the ground and the sphere)
-    // ...
+
+    // Collisions with ground
+    const size_t N = position.size();
+    const float ground_height = collision_shapes.ground_height;
+    const vec3 ground_normal{0, 1, 0};
+    for(size_t k=0; k<N; ++k) {
+        vec3& v = speed[k];
+        vec3& p = position[k];
+        // Collision detection !
+        if (p.y <= ground_height) {
+            p.y = ground_height;
+        }
+    }
 }
 
 

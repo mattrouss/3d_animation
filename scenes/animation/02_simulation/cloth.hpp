@@ -73,7 +73,6 @@ struct scene_model : scene_base
     vcl::timer_event timer;
 
 
-
     void initialize();
     void collision_constraints();
     void compute_forces();
