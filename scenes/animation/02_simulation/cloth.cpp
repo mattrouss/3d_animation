@@ -7,6 +7,14 @@
 using namespace vcl;
 
 
+/** Compute spring force applied on particle pi from particle pj */
+vec3 spring_force(const vec3& pi, const vec3& pj, float L0, float K)
+{
+    vec3 const pji = pj - pi;
+    float const L = norm(pji);
+    return K * (L - L0) * pji / L;
+}
+
 // Fill value of force applied on each particle
 // - Gravity
 // - Drag
@@ -32,13 +40,22 @@ void scene_model::compute_forces()
     // Drag
     const float mu = user_parameters.mu;
     for(size_t k=0; k<N; ++k)
-        force[k] = force[k]-mu*speed[k];
+        force[k] += force[k]-mu*speed[k];
 
     // Springs
     for(int ku=0; ku<N_dim; ++ku) {
       for(int kv=0; kv<N_dim; ++kv) {
-          // To do ...
-          // Compute spring forces force(ku,kv) = ...
+        size_t2 const k = {(size_t)ku, (size_t)kv};
+        
+        // Add structural springs
+        if (ku > 0)
+            force[k] += spring_force(position[k], position[size_t2{size_t(ku - 1), size_t(kv)}], L0, K);
+        if (ku < N_dim - 1)
+            force[k] += spring_force(position[k], position[size_t2{size_t(ku + 1), size_t(kv)}], L0, K);
+        if (kv > 0)
+            force[k] += spring_force(position[k], position[size_t2{size_t(ku), size_t(kv - 1)}], L0, K);
+        if (kv < N_dim - 1)
+            force[k] += spring_force(position[k], position[size_t2{size_t(ku), size_t(kv + 1)}], L0, K);
       }
     }
 }
@@ -267,10 +284,10 @@ void scene_model::detect_simulation_divergence()
 void scene_model::set_gui()
 {
     ImGui::SliderFloat("Time scale", &timer.scale, 0.05f, 2.0f, "%.2f s");
-    ImGui::SliderFloat("Stiffness", &user_parameters.K, 1.0f, 400.0f, "%.2f s");
-    ImGui::SliderFloat("Damping", &user_parameters.mu, 0.0f, 0.1f, "%.3f s");
-    ImGui::SliderFloat("Mass", &user_parameters.m, 1.0f, 15.0f, "%.2f s");
-    ImGui::SliderFloat("Wind", &user_parameters.wind, 0.0f, 400.0f, "%.2f s");
+    ImGui::SliderFloat("Stiffness", &user_parameters.K, 1.0f, 600.0f, "%.2f");
+    ImGui::SliderFloat("Damping", &user_parameters.mu, 0.0f, 0.1f, "%.3f");
+    ImGui::SliderFloat("Mass", &user_parameters.m, 1.0f, 15.0f, "%.2f");
+    ImGui::SliderFloat("Wind", &user_parameters.wind, 0.0f, 400.0f, "%.2f");
 
     ImGui::Checkbox("Wireframe",&gui_display_wireframe);
     ImGui::Checkbox("Texture",&gui_display_texture);
