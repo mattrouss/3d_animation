@@ -97,17 +97,22 @@ void scene_model::collision_constraints()
     const size_t N = position.size();
     for(size_t k=0; k<N; ++k) {
         vec3& p = position[k];
+        vec3& v = speed[k];
         // Collision detection with ground
         if (p.y <= ground_height) {
+            v.y = 0;
             p.y = ground_height;
         }
 
         // Collision detection with sphere
-        const vec3 v_sphere_particle = p - sphere_position;
-        float dist = norm(v_sphere_particle);
+        const vec3 delta = p - sphere_position;
+        const float dist = norm(delta);
+        const vec3 normal = (1 / dist) * delta;
         if (dist < sphere_radius + 1E-3)
         {
-            p += (sphere_radius - dist + 1E-3) / dist * v_sphere_particle;
+            const vec3 v_orth = dot(v, normal) * normal;
+            v -= v_orth;
+            p += (sphere_radius - dist + 1E-3) / dist * delta;
         }
     }
 }
@@ -175,7 +180,7 @@ void scene_model::setup_data(std::map<std::string,GLuint>& shaders, scene_struct
     user_parameters.mu   = 0.02f;
 
     // Set collision shapes
-    collision_shapes.sphere_p = {0,0.1f,0};
+    collision_shapes.sphere_p = {0.3f,0.1f,0};
     collision_shapes.sphere_r = 0.2f;
     collision_shapes.ground_height = 0.1f;
 
