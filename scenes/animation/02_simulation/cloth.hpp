@@ -10,8 +10,6 @@ struct user_parameters_structure
     float m;    // Global mass (to be divided by the number of particles)
     float K;    // Global stiffness (to be divided by the number of particles)
     float mu;   // Damping
-    float alpha; // Sheering coefficient
-    float beta; // Bending coefficient
     float wind; // Wind magnitude;
 };
 

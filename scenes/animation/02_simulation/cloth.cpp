@@ -29,8 +29,6 @@ void scene_model::compute_forces()
 
     // Get simuation parameters
     const float K  = user_parameters.K;
-    const float alpha = user_parameters.alpha;
-    const float beta = user_parameters.beta;
     const float m  = simulation_parameters.m;
     const float L0 = simulation_parameters.L0;
 
@@ -61,23 +59,23 @@ void scene_model::compute_forces()
 
         // Add shearing springs
         if (ku > 0 && kv > 0)
-            force[k] += alpha * spring_force(position[k], position[size_t2{size_t(ku - 1), size_t(kv - 1)}], L0, K);
+            force[k] += spring_force(position[k], position[size_t2{size_t(ku - 1), size_t(kv - 1)}], std::sqrt(2) * L0, K);
         if (ku < N_dim - 1 && kv < N_dim - 1)
-            force[k] += alpha * spring_force(position[k], position[size_t2{size_t(ku + 1), size_t(kv + 1)}], L0, K);
+            force[k] += spring_force(position[k], position[size_t2{size_t(ku + 1), size_t(kv + 1)}], std::sqrt(2) * L0, K);
         if (ku > 0 && kv < N_dim - 1)
-            force[k] += alpha * spring_force(position[k], position[size_t2{size_t(ku - 1), size_t(kv + 1)}], L0, K);
+            force[k] += spring_force(position[k], position[size_t2{size_t(ku - 1), size_t(kv + 1)}], std::sqrt(2) * L0, K);
         if (ku < N_dim - 1 && kv > 0)
-            force[k] += alpha * spring_force(position[k], position[size_t2{size_t(ku + 1), size_t(kv - 1)}], L0, K);
+            force[k] += spring_force(position[k], position[size_t2{size_t(ku + 1), size_t(kv - 1)}], std::sqrt(2) * L0, K);
 
         // Add bending springs
         if (ku > 1)
-            force[k] += beta * spring_force(position[k], position[size_t2{size_t(ku - 2), size_t(kv)}], L0, K);
+            force[k] += spring_force(position[k], position[size_t2{size_t(ku - 2), size_t(kv)}], 2 * L0, K);
         if (ku < N_dim - 2)
-            force[k] += beta * spring_force(position[k], position[size_t2{size_t(ku + 2), size_t(kv)}], L0, K);
+            force[k] += spring_force(position[k], position[size_t2{size_t(ku + 2), size_t(kv)}], 2 * L0, K);
         if (kv > 1)
-            force[k] += beta * spring_force(position[k], position[size_t2{size_t(ku), size_t(kv - 2)}], L0, K);
+            force[k] += spring_force(position[k], position[size_t2{size_t(ku), size_t(kv - 2)}], 2 * L0, K);
         if (kv < N_dim - 2)
-            force[k] += beta * spring_force(position[k], position[size_t2{size_t(ku), size_t(kv + 2)}], L0, K);
+            force[k] += spring_force(position[k], position[size_t2{size_t(ku), size_t(kv + 2)}], 2 * L0, K);
 
         
       }
@@ -107,9 +105,9 @@ void scene_model::collision_constraints()
         // Collision detection with sphere
         const vec3 v_sphere_particle = p - sphere_position;
         float dist = norm(v_sphere_particle);
-        if (dist < sphere_radius)
+        if (dist < sphere_radius + 1E-3)
         {
-            p += (sphere_radius - dist + 1E-2) / dist * v_sphere_particle;
+            p += (sphere_radius - dist + 1E-3) / dist * v_sphere_particle;
         }
     }
 }
@@ -171,12 +169,10 @@ void scene_model::setup_data(std::map<std::string,GLuint>& shaders, scene_struct
     initialize();
 
     // Default value for simulation parameters
-    user_parameters.K    = 100.0f;
+    user_parameters.K    = 300.0f;
     user_parameters.m    = 5.0f;
     user_parameters.wind = 10.0f;
     user_parameters.mu   = 0.02f;
-    user_parameters.alpha   = 0.05f;
-    user_parameters.beta   = 0.01f;
 
     // Set collision shapes
     collision_shapes.sphere_p = {0,0.1f,0};
@@ -332,10 +328,8 @@ void scene_model::detect_simulation_divergence()
 void scene_model::set_gui()
 {
     ImGui::SliderFloat("Time scale", &timer.scale, 0.05f, 2.0f, "%.2f s");
-    ImGui::SliderFloat("Stiffness", &user_parameters.K, 1.0f, 600.0f, "%.2f");
+    ImGui::SliderFloat("Stiffness", &user_parameters.K, 1.0f, 1000.0f, "%.2f");
     ImGui::SliderFloat("Damping", &user_parameters.mu, 0.0f, 0.1f, "%.3f");
-    ImGui::SliderFloat("Shearing", &user_parameters.alpha, 0.0f, 1.0f, "%.2f");
-    ImGui::SliderFloat("Bending", &user_parameters.beta, 0.0f, 1.0f, "%.2f");
     ImGui::SliderFloat("Mass", &user_parameters.m, 1.0f, 15.0f, "%.2f");
     ImGui::SliderFloat("Wind", &user_parameters.wind, 0.0f, 400.0f, "%.2f");
 
