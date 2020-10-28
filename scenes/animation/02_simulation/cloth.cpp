@@ -77,7 +77,10 @@ void scene_model::compute_forces()
         if (kv < N_dim - 2)
             force[k] += spring_force(position[k], position[size_t2{size_t(ku), size_t(kv + 2)}], 2 * L0, K);
 
-        
+        const vec3 normal = normals[ku * N_dim + kv];
+        const vec3 wind_force = user_parameters.wind * vec3{-1.0f, 0, 0};
+
+        force[k] += std::fabs(dot(normal, wind_force)) * wind_force;
       }
     }
 }
@@ -176,7 +179,7 @@ void scene_model::setup_data(std::map<std::string,GLuint>& shaders, scene_struct
     // Default value for simulation parameters
     user_parameters.K    = 300.0f;
     user_parameters.m    = 5.0f;
-    user_parameters.wind = 10.0f;
+    user_parameters.wind = 1.0f;
     user_parameters.mu   = 0.02f;
 
     // Set collision shapes
@@ -336,7 +339,7 @@ void scene_model::set_gui()
     ImGui::SliderFloat("Stiffness", &user_parameters.K, 1.0f, 1000.0f, "%.2f");
     ImGui::SliderFloat("Damping", &user_parameters.mu, 0.0f, 0.1f, "%.3f");
     ImGui::SliderFloat("Mass", &user_parameters.m, 1.0f, 15.0f, "%.2f");
-    ImGui::SliderFloat("Wind", &user_parameters.wind, 0.0f, 400.0f, "%.2f");
+    ImGui::SliderFloat("Wind", &user_parameters.wind, 0.0f, 5.0f, "%.2f");
 
     ImGui::Checkbox("Wireframe",&gui_display_wireframe);
     ImGui::Checkbox("Texture",&gui_display_texture);
