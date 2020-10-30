@@ -78,9 +78,10 @@ void scene_model::compute_forces()
             force[k] += spring_force(position[k], position[size_t2{size_t(ku), size_t(kv + 2)}], 2 * L0, K);
 
         const vec3 normal = normals[ku * N_dim + kv];
-        const vec3 wind_force = user_parameters.wind * vec3{-1.0f, 0, 0};
+//        const vec3 wind_force = (std::fabs(std::sin(position[k].x + 4 * timer.t)) + std::fabs(std::cos(position[k].y + 4 * timer.t) / 3)) * vec3{-1.0f, 0, 0};
+        const vec3 wind_force = vec3{-1.0f, 0, 0};
 
-        force[k] += std::fabs(dot(normal, wind_force)) * wind_force;
+        force[k] += user_parameters.wind * std::fabs(dot(normal / norm(normal), wind_force)) * wind_force;
       }
     }
 }
@@ -336,7 +337,7 @@ void scene_model::detect_simulation_divergence()
 void scene_model::set_gui()
 {
     ImGui::SliderFloat("Time scale", &timer.scale, 0.05f, 2.0f, "%.2f s");
-    ImGui::SliderFloat("Stiffness", &user_parameters.K, 1.0f, 1000.0f, "%.2f");
+    ImGui::SliderFloat("Stiffness", &user_parameters.K, 1.0f, 2000.0f, "%.2f");
     ImGui::SliderFloat("Damping", &user_parameters.mu, 0.0f, 0.1f, "%.3f");
     ImGui::SliderFloat("Mass", &user_parameters.m, 1.0f, 15.0f, "%.2f");
     ImGui::SliderFloat("Wind", &user_parameters.wind, 0.0f, 5.0f, "%.2f");
