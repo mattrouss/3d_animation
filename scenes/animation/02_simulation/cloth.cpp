@@ -28,7 +28,9 @@ void scene_model::compute_forces()
     simulation_parameters.m = user_parameters.m / float(N); // Constant total mass
 
     // Get simuation parameters
-    const float K  = user_parameters.K;
+    const float K_struct  = user_parameters.K_struct;
+    const float K_shear  = user_parameters.K_shear;
+    const float K_bend  = user_parameters.K_bend;
     const float m  = simulation_parameters.m;
     const float L0 = simulation_parameters.L0;
 
@@ -49,38 +51,38 @@ void scene_model::compute_forces()
         
         // Add structural springs
         if (ku > 0)
-            force[k] += spring_force(position[k], position[size_t2{size_t(ku - 1), size_t(kv)}], L0, K);
+            force[k] += spring_force(position[k], position[size_t2{size_t(ku - 1), size_t(kv)}], L0, K_struct);
         if (ku < N_dim - 1)
-            force[k] += spring_force(position[k], position[size_t2{size_t(ku + 1), size_t(kv)}], L0, K);
+            force[k] += spring_force(position[k], position[size_t2{size_t(ku + 1), size_t(kv)}], L0, K_struct);
         if (kv > 0)
-            force[k] += spring_force(position[k], position[size_t2{size_t(ku), size_t(kv - 1)}], L0, K);
+            force[k] += spring_force(position[k], position[size_t2{size_t(ku), size_t(kv - 1)}], L0, K_struct);
         if (kv < N_dim - 1)
-            force[k] += spring_force(position[k], position[size_t2{size_t(ku), size_t(kv + 1)}], L0, K);
+            force[k] += spring_force(position[k], position[size_t2{size_t(ku), size_t(kv + 1)}], L0, K_struct);
 
         // Add shearing springs
         if (ku > 0 && kv > 0)
-            force[k] += spring_force(position[k], position[size_t2{size_t(ku - 1), size_t(kv - 1)}], std::sqrt(2) * L0, K);
+            force[k] += spring_force(position[k], position[size_t2{size_t(ku - 1), size_t(kv - 1)}], std::sqrt(2) * L0, K_shear);
         if (ku < N_dim - 1 && kv < N_dim - 1)
-            force[k] += spring_force(position[k], position[size_t2{size_t(ku + 1), size_t(kv + 1)}], std::sqrt(2) * L0, K);
+            force[k] += spring_force(position[k], position[size_t2{size_t(ku + 1), size_t(kv + 1)}], std::sqrt(2) * L0, K_shear);
         if (ku > 0 && kv < N_dim - 1)
-            force[k] += spring_force(position[k], position[size_t2{size_t(ku - 1), size_t(kv + 1)}], std::sqrt(2) * L0, K);
+            force[k] += spring_force(position[k], position[size_t2{size_t(ku - 1), size_t(kv + 1)}], std::sqrt(2) * L0, K_shear);
         if (ku < N_dim - 1 && kv > 0)
-            force[k] += spring_force(position[k], position[size_t2{size_t(ku + 1), size_t(kv - 1)}], std::sqrt(2) * L0, K);
+            force[k] += spring_force(position[k], position[size_t2{size_t(ku + 1), size_t(kv - 1)}], std::sqrt(2) * L0, K_shear);
 
         // Add bending springs
         if (ku > 1)
-            force[k] += spring_force(position[k], position[size_t2{size_t(ku - 2), size_t(kv)}], 2 * L0, K);
+            force[k] += spring_force(position[k], position[size_t2{size_t(ku - 2), size_t(kv)}], 2 * L0, K_bend);
         if (ku < N_dim - 2)
-            force[k] += spring_force(position[k], position[size_t2{size_t(ku + 2), size_t(kv)}], 2 * L0, K);
+            force[k] += spring_force(position[k], position[size_t2{size_t(ku + 2), size_t(kv)}], 2 * L0, K_bend);
         if (kv > 1)
-            force[k] += spring_force(position[k], position[size_t2{size_t(ku), size_t(kv - 2)}], 2 * L0, K);
+            force[k] += spring_force(position[k], position[size_t2{size_t(ku), size_t(kv - 2)}], 2 * L0, K_bend);
         if (kv < N_dim - 2)
-            force[k] += spring_force(position[k], position[size_t2{size_t(ku), size_t(kv + 2)}], 2 * L0, K);
+            force[k] += spring_force(position[k], position[size_t2{size_t(ku), size_t(kv + 2)}], 2 * L0, K_bend);
 
         const vec3 normal = normals[ku * N_dim + kv];
-//        const vec3 wind_force = (std::fabs(std::sin(position[k].x + 4 * timer.t)) + std::fabs(std::cos(position[k].y + 4 * timer.t) / 3)) * vec3{-1.0f, 0, 0};
+//        const vec3 wind_force = std::fabs(std::sin(1 + 4 * timer.t)) * vec3{-1.0f, 0, 0};
         const vec3 wind_force = vec3{-1.0f, 0, 0};
-
+                
         force[k] += user_parameters.wind * std::fabs(dot(normal / norm(normal), wind_force)) * wind_force;
       }
     }
@@ -170,7 +172,7 @@ void scene_model::setup_data(std::map<std::string,GLuint>& shaders, scene_struct
     gui.show_frame_camera = false;
 
     // Load textures
-    texture_cloth = create_texture_gpu(image_load_png("scenes/animation/02_simulation/assets/cloth.png"));
+    texture_cloth = create_texture_gpu(image_load_png("scenes/animation/02_simulation/assets/checkers_green.png"));
     texture_wood  = create_texture_gpu(image_load_png("scenes/animation/02_simulation/assets/wood.png"));
     shader_mesh = shaders["mesh_bf"];
 
@@ -178,7 +180,9 @@ void scene_model::setup_data(std::map<std::string,GLuint>& shaders, scene_struct
     initialize();
 
     // Default value for simulation parameters
-    user_parameters.K    = 300.0f;
+    user_parameters.K_struct    = 300.0f;
+    user_parameters.K_shear    = 300.0f;
+    user_parameters.K_bend    = 300.0f;
     user_parameters.m    = 5.0f;
     user_parameters.wind = 1.0f;
     user_parameters.mu   = 0.02f;
@@ -337,7 +341,9 @@ void scene_model::detect_simulation_divergence()
 void scene_model::set_gui()
 {
     ImGui::SliderFloat("Time scale", &timer.scale, 0.05f, 2.0f, "%.2f s");
-    ImGui::SliderFloat("Stiffness", &user_parameters.K, 1.0f, 2000.0f, "%.2f");
+    ImGui::SliderFloat("Structural Stiffness", &user_parameters.K_struct, 1.0f, 3000.0f, "%.2f");
+    ImGui::SliderFloat("Shearing Stiffness", &user_parameters.K_shear, 1.0f, 3000.0f, "%.2f");
+    ImGui::SliderFloat("Bending Stiffness", &user_parameters.K_bend, 1.0f, 3000.0f, "%.2f");
     ImGui::SliderFloat("Damping", &user_parameters.mu, 0.0f, 0.1f, "%.3f");
     ImGui::SliderFloat("Mass", &user_parameters.m, 1.0f, 15.0f, "%.2f");
     ImGui::SliderFloat("Wind", &user_parameters.wind, 0.0f, 5.0f, "%.2f");
