@@ -79,11 +79,11 @@ void scene_model::compute_forces()
         if (kv < N_dim - 2)
             force[k] += spring_force(position[k], position[size_t2{size_t(ku), size_t(kv + 2)}], 2 * L0, K_bend);
 
-        const vec3 normal = normals[ku * N_dim + kv];
-//        const vec3 wind_force = std::fabs(std::sin(1 + 4 * timer.t)) * vec3{-1.0f, 0, 0};
+        const vec3 normal = normals[ku + N_dim + kv];
+//        const vec3 wind_force = std::fabs(std::sin(position[k].x + 3 * timer.t)) * vec3{-1.0f, 0, 0};
         const vec3 wind_force = vec3{-1.0f, 0, 0};
                 
-        force[k] += user_parameters.wind * std::fabs(dot(normal / norm(normal), wind_force)) * wind_force;
+        force[k] += user_parameters.wind * std::fabs(dot(normal, wind_force)) * wind_force;
       }
     }
 }
