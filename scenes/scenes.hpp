@@ -12,4 +12,5 @@
 #include "scenes/animation/02_simulation/sphere_collision.hpp"
 #include "scenes/animation/02_simulation/example_mass_spring.hpp"
 #include "scenes/animation/02_simulation/cloth.hpp"
+#include "scenes/animation/02_simulation/sky_dancer.hpp"
 #include "scenes/animation/03_skinning/skinning.hpp"
