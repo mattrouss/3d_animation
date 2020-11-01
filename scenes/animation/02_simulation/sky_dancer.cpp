@@ -51,14 +51,16 @@ void scene_model::compute_forces()
         // Add structural springs
         if (kv == 0)
             force[k] += spring_force(position[k], position[size_t2{size_t(ku), size_t(N_dim - 1)}], L0_horizontal, K);
+        if (kv == N_dim - 1)
+            force[k] += spring_force(position[k], position[size_t2{size_t(ku), 0u}], L0_horizontal, K);
         if (ku > 0)
-            force[k] += spring_force(position[k], position[size_t2{size_t(ku - 1), size_t(kv)}], L0_horizontal, K);
+            force[k] += spring_force(position[k], position[size_t2{size_t(ku - 1), size_t(kv)}], L0_vertical, K);
         if (ku < N_dim - 1)
-            force[k] += spring_force(position[k], position[size_t2{size_t(ku + 1), size_t(kv)}], L0_horizontal, K);
+            force[k] += spring_force(position[k], position[size_t2{size_t(ku + 1), size_t(kv)}], L0_vertical, K);
         if (kv > 0)
-            force[k] += spring_force(position[k], position[size_t2{size_t(ku), size_t(kv - 1)}], L0_vertical, K);
+            force[k] += spring_force(position[k], position[size_t2{size_t(ku), size_t(kv - 1)}], L0_horizontal, K);
         if (kv < N_dim - 1)
-            force[k] += spring_force(position[k], position[size_t2{size_t(ku), size_t(kv + 1)}], L0_vertical, K);
+            force[k] += spring_force(position[k], position[size_t2{size_t(ku), size_t(kv + 1)}], L0_horizontal, K);
 
         /*
         // Add shearing springs
@@ -119,23 +121,22 @@ void scene_model::collision_constraints()
 void scene_model::initialize()
 {
     // Number of samples of the model (total number of particles is N_cloth x N_cloth)
-    const size_t N_cloth = 5;
+    const size_t N_cloth = resolution;
 
     // Rest length (length of an edge)
-    const float theta = static_cast<float>( 2* 3.14159f / N_cloth );
+    const float theta = static_cast<float>( 2* 3.14159f / float(N_cloth));
     simulation_parameters.L0_horizontal = 0.5f * std::tan(theta);
     simulation_parameters.L0_vertical = 1.0f/float(N_cloth-1);
 
-    std::cout << "L0H: " << simulation_parameters.L0_horizontal << ", L0V: " << simulation_parameters.L0_vertical << std::endl;
-
     // Create cloth mesh in its initial position
     // Horizontal grid of length 1 x 1
-    const mesh base_dancer = mesh_primitive_cylinder(0.5f, {0, 0, 0}, {0, 1, 0}, N_cloth, N_cloth, true);
+    const mesh base_dancer = mesh_primitive_cylinder(0.5f, {0, 0, 0}, {0, 5, 0}, N_cloth, N_cloth, true);
 
     // Set particle position from cloth geometry
     position = buffer2D_from_vector(base_dancer.position, N_cloth, N_cloth);
 
     // Set hard positional constraints
+    positional_constraints.clear();
     for (size_t ku = 0; ku < N_cloth; ++ku)
         positional_constraints[ku * N_cloth] = position[ku * N_cloth];
 
@@ -272,7 +273,7 @@ void scene_model::display_elements(std::map<std::string,GLuint>& shaders, scene_
 
 
     // Display positional constraint using spheres
-    sphere.uniform.transform.scaling = 0.02f;
+    sphere.uniform.transform.scaling = 0.01f;
     sphere.uniform.color = {0,0,1};
     for(const auto& constraints : positional_constraints)  {
         sphere.uniform.transform.translation = constraints.second;
@@ -280,20 +281,17 @@ void scene_model::display_elements(std::map<std::string,GLuint>& shaders, scene_
     }
 
     sphere.uniform.color = {1,0,0};
-    const size_t NN = position.size();
-    for(size_t k=0; k<NN; ++k)
-    {
-        vec3& p = position[k];
-
-        sphere.uniform.transform.translation = p;
-        draw(sphere, scene.camera, shaders["mesh"]);
-    }
 
     const int N_dim = int(force.dimension[0]);
     for(int ku=0; ku<N_dim; ++ku) {
         for(int kv=0; kv<N_dim; ++kv) {
             size_t2 const k = {(size_t)ku, (size_t)kv};
+            vec3& p = position[k];
 
+            sphere.uniform.transform.translation = p;
+            draw(sphere, scene.camera, shaders["mesh"]);
+
+            /*
             // Add structural springs
             if (kv == 0) {
                 segment_drawer.uniform_parameter.p1 = position[k];
@@ -316,12 +314,24 @@ void scene_model::display_elements(std::map<std::string,GLuint>& shaders, scene_
                 segment_drawer.draw(shaders["segment_im"],scene.camera);
             }
             if (kv < N_dim - 1) {
-                segment_drawer.uniform_parameter.p1 = position[k];
-                segment_drawer.uniform_parameter.p2 = position[size_t2{size_t(ku), size_t(kv + 1)}];
-                segment_drawer.draw(shaders["segment_im"],scene.camera);
+            segment_drawer.uniform_parameter.p1 = position[k];
+            segment_drawer.uniform_parameter.p2 = position[size_t2{size_t(ku), size_t(kv + 1)}];
+            segment_drawer.draw(shaders["segment_im"],scene.camera);
             }
+            */
         }
     }
+
+    segment_drawer.uniform_parameter.color = {0,1,0};
+    const vec3 p1 = position[size_t2{0u, 0u}];
+    const vec3 p2 = position[size_t2{0u, 1u}];
+    segment_drawer.uniform_parameter.p1 = p1;
+    const vec3 p12 = p2 - p1;
+    const float theta = static_cast<float>( 2* 3.14159f / float(N_dim));
+    const float L = 0.5f * std::tan(theta);
+    segment_drawer.uniform_parameter.p2 = L * p12 / norm(p12) + p1;
+    segment_drawer.draw(shaders["segment_im"],scene.camera);
+    segment_drawer.uniform_parameter.color = {0,0,1};
 
     // Display ground
     draw(ground, scene.camera);
@@ -370,6 +380,10 @@ void scene_model::detect_simulation_divergence()
 void scene_model::set_gui()
 {
     ImGui::SliderFloat("Time scale", &timer.scale, 0.05f, 2.0f, "%.2f s");
+    size_t resolution_min = 3u;
+    size_t resolution_max = 20u;
+    ImGui::SliderScalar("Resolution", ImGuiDataType_U64, &resolution, &resolution_min, &resolution_max);
+
     ImGui::SliderFloat("Stiffness", &user_parameters.K, 1.0f, 3000.0f, "%.2f");
     ImGui::SliderFloat("Damping", &user_parameters.mu, 0.0f, 0.1f, "%.3f");
     ImGui::SliderFloat("Mass", &user_parameters.m, 1.0f, 15.0f, "%.2f");
@@ -386,6 +400,12 @@ void scene_model::set_gui()
         if( simulation_diverged )
             force_simulation=true;
         timer.start();
+    }
+
+    if (resolution != old_resolution)
+    {
+        old_resolution = resolution;
+        initialize();
     }
 
     bool const restart = ImGui::Button("Restart");

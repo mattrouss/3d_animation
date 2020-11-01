@@ -66,6 +66,8 @@ struct scene_model : scene_base
     // Parameters used to control if the simulation runs when a numerical divergence is detected
     bool simulation_diverged; // Active when divergence is detected
     bool force_simulation;    // Force to run simulation even if divergence is detected
+    size_t resolution = 10u;
+    size_t old_resolution = 10u;
     GLuint shader_mesh;
 
     vcl::timer_event timer;
