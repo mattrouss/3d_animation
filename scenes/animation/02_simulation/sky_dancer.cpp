@@ -62,33 +62,55 @@ void scene_model::compute_forces()
         if (kv < N_dim - 1)
             force[k] += spring_force(position[k], position[size_t2{size_t(ku), size_t(kv + 1)}], L0_horizontal, K);
 
-        /*
         // Add shearing springs
+        const float L0_diag = std::sqrt(std::pow(L0_horizontal, 2) + std::pow(L0_vertical, 2));
+        if (kv == 0)
+        {
+            if (ku > 0)
+                force[k] += spring_force(position[k], position[size_t2{size_t(ku - 1), size_t(N_dim - 1)}], L0_diag, K);
+            if (ku < N_dim - 1)
+                force[k] += spring_force(position[k], position[size_t2{size_t(ku + 1), size_t(N_dim - 1)}], L0_diag, K);
+        }
+        if (kv == N_dim - 1)
+        {
+            if (ku > 0)
+                force[k] += spring_force(position[k], position[size_t2{size_t(ku - 1), 0u}], L0_diag, K);
+            if (ku < N_dim - 1)
+                force[k] += spring_force(position[k], position[size_t2{size_t(ku + 1), 0u}], L0_diag, K);
+        }
         if (ku > 0 && kv > 0)
-            force[k] += spring_force(position[k], position[size_t2{size_t(ku - 1), size_t(kv - 1)}], std::sqrt(2) * L0, K);
+            force[k] += spring_force(position[k], position[size_t2{size_t(ku - 1), size_t(kv - 1)}], L0_diag, K);
         if (ku < N_dim - 1 && kv < N_dim - 1)
-            force[k] += spring_force(position[k], position[size_t2{size_t(ku + 1), size_t(kv + 1)}], std::sqrt(2) * L0, K);
+            force[k] += spring_force(position[k], position[size_t2{size_t(ku + 1), size_t(kv + 1)}], L0_diag, K);
         if (ku > 0 && kv < N_dim - 1)
-            force[k] += spring_force(position[k], position[size_t2{size_t(ku - 1), size_t(kv + 1)}], std::sqrt(2) * L0, K);
+            force[k] += spring_force(position[k], position[size_t2{size_t(ku - 1), size_t(kv + 1)}], L0_diag, K);
         if (ku < N_dim - 1 && kv > 0)
-            force[k] += spring_force(position[k], position[size_t2{size_t(ku + 1), size_t(kv - 1)}], std::sqrt(2) * L0, K);
+            force[k] += spring_force(position[k], position[size_t2{size_t(ku + 1), size_t(kv - 1)}], L0_diag, K);
 
+        /*
         // Add bending springs
+        if (kv == 0)
+            force[k] += spring_force(position[k], position[size_t2{size_t(ku), size_t(N_dim - 2)}], 2 * L0_horizontal, K);
+        if (kv == N_dim - 1)
+            force[k] += spring_force(position[k], position[size_t2{size_t(ku), 0u}], 2 * L0_horizontal, K);
+        if (kv == 1)
+            force[k] += spring_force(position[k], position[size_t2{size_t(ku), size_t(N_dim - 1)}], 2 * L0_horizontal, K);
+        if (kv == N_dim - 2)
+            force[k] += spring_force(position[k], position[size_t2{size_t(ku), 1u}], 2 * L0_horizontal, K);
         if (ku > 1)
-            force[k] += spring_force(position[k], position[size_t2{size_t(ku - 2), size_t(kv)}], 2 * L0, K);
+            force[k] += spring_force(position[k], position[size_t2{size_t(ku - 2), size_t(kv)}], 2 * L0_vertical, K);
         if (ku < N_dim - 2)
-            force[k] += spring_force(position[k], position[size_t2{size_t(ku + 2), size_t(kv)}], 2 * L0, K);
+            force[k] += spring_force(position[k], position[size_t2{size_t(ku + 2), size_t(kv)}], 2 * L0_vertical, K);
         if (kv > 1)
-            force[k] += spring_force(position[k], position[size_t2{size_t(ku), size_t(kv - 2)}], 2 * L0, K);
+            force[k] += spring_force(position[k], position[size_t2{size_t(ku), size_t(kv - 2)}], 2 * L0_horizontal, K);
         if (kv < N_dim - 2)
-            force[k] += spring_force(position[k], position[size_t2{size_t(ku), size_t(kv + 2)}], 2 * L0, K);
+            force[k] += spring_force(position[k], position[size_t2{size_t(ku), size_t(kv + 2)}], 2 * L0_horizontal, K);
 
-//        const vec3 normal = normals[ku + N_dim * kv];
-//        const vec3 wind_force = std::fabs(std::sin(position[k].x + 3 * timer.t)) * vec3{-1.0f, 0, 0};
-//        const vec3 wind_force = vec3{-1.0f, 0, 0};
+            */
+        const vec3 normal = normals[ku + N_dim * kv];
+        const vec3 wind_force = std::fabs(std::sin(position[k].y + 3 * timer.t)) * vec3{0, 1.0f, 0};
                 
-//        force[k] += user_parameters.wind * std::fabs(dot(normal, wind_force)) * wind_force;
-        */
+        force[k] += user_parameters.wind * std::fabs(dot(normal, wind_force)) * wind_force;
       }
     }
 }
@@ -122,15 +144,17 @@ void scene_model::initialize()
 {
     // Number of samples of the model (total number of particles is N_cloth x N_cloth)
     const size_t N_cloth = resolution;
+    const float radius = 0.5f;
+    const float height = 5.0f;
 
     // Rest length (length of an edge)
     const float theta = static_cast<float>( 2* 3.14159f / float(N_cloth));
-    simulation_parameters.L0_horizontal = 0.5f * std::tan(theta);
-    simulation_parameters.L0_vertical = 1.0f/float(N_cloth-1);
+    simulation_parameters.L0_horizontal = radius * std::tan(theta);
+    simulation_parameters.L0_vertical = height/float(N_cloth-1);
 
     // Create cloth mesh in its initial position
     // Horizontal grid of length 1 x 1
-    const mesh base_dancer = mesh_primitive_cylinder(0.5f, {0, 0, 0}, {0, 5, 0}, N_cloth, N_cloth, true);
+    const mesh base_dancer = mesh_primitive_cylinder(radius, {0, 0, 0}, {0, height, 0}, N_cloth, N_cloth, true);
 
     // Set particle position from cloth geometry
     position = buffer2D_from_vector(base_dancer.position, N_cloth, N_cloth);
@@ -188,7 +212,8 @@ void scene_model::setup_data(std::map<std::string,GLuint>& shaders, scene_struct
     // Set collision shapes
     collision_shapes.ground_height = 0;
 
-    ground = mesh_drawable(mesh_primitive_quad({-1,collision_shapes.ground_height-1e-3f,-1}, {1,collision_shapes.ground_height-1e-3f,-1}, {1,collision_shapes.ground_height-1e-3f,1}, {-1,collision_shapes.ground_height-1e-3f,1}));
+    const float half_width_ground = 5.0f;
+    ground = mesh_drawable(mesh_primitive_quad({-half_width_ground,collision_shapes.ground_height-1e-3f,-half_width_ground}, {half_width_ground,collision_shapes.ground_height-1e-3f,-half_width_ground}, {half_width_ground,collision_shapes.ground_height-1e-3f,half_width_ground}, {-half_width_ground,collision_shapes.ground_height-1e-3f,half_width_ground}));
     ground.shader = shaders["mesh_bf"];
     ground.texture_id = texture_wood;
 
@@ -381,13 +406,13 @@ void scene_model::set_gui()
 {
     ImGui::SliderFloat("Time scale", &timer.scale, 0.05f, 2.0f, "%.2f s");
     size_t resolution_min = 3u;
-    size_t resolution_max = 20u;
+    size_t resolution_max = 50u;
     ImGui::SliderScalar("Resolution", ImGuiDataType_U64, &resolution, &resolution_min, &resolution_max);
 
     ImGui::SliderFloat("Stiffness", &user_parameters.K, 1.0f, 3000.0f, "%.2f");
     ImGui::SliderFloat("Damping", &user_parameters.mu, 0.0f, 0.1f, "%.3f");
     ImGui::SliderFloat("Mass", &user_parameters.m, 1.0f, 15.0f, "%.2f");
-    ImGui::SliderFloat("Wind", &user_parameters.wind, 0.0f, 5.0f, "%.2f");
+    ImGui::SliderFloat("Wind", &user_parameters.wind, 0.0f, 30.0f, "%.2f");
 
     ImGui::Checkbox("Wireframe",&gui_display_wireframe);
     ImGui::Checkbox("Texture",&gui_display_texture);
