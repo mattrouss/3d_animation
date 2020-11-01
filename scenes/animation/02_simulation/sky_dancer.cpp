@@ -87,16 +87,16 @@ void scene_model::compute_forces()
         if (ku < N_dim - 1 && kv > 0)
             force[k] += spring_force(position[k], position[size_t2{size_t(ku + 1), size_t(kv - 1)}], L0_diag, K);
 
-        /*
         // Add bending springs
         if (kv == 0)
             force[k] += spring_force(position[k], position[size_t2{size_t(ku), size_t(N_dim - 2)}], 2 * L0_horizontal, K);
         if (kv == N_dim - 1)
-            force[k] += spring_force(position[k], position[size_t2{size_t(ku), 0u}], 2 * L0_horizontal, K);
+            force[k] += spring_force(position[k], position[size_t2{size_t(ku), 1u}], 2 * L0_horizontal, K);
         if (kv == 1)
             force[k] += spring_force(position[k], position[size_t2{size_t(ku), size_t(N_dim - 1)}], 2 * L0_horizontal, K);
         if (kv == N_dim - 2)
-            force[k] += spring_force(position[k], position[size_t2{size_t(ku), 1u}], 2 * L0_horizontal, K);
+            force[k] += spring_force(position[k], position[size_t2{size_t(ku), 0u}], 2 * L0_horizontal, K);
+
         if (ku > 1)
             force[k] += spring_force(position[k], position[size_t2{size_t(ku - 2), size_t(kv)}], 2 * L0_vertical, K);
         if (ku < N_dim - 2)
@@ -106,9 +106,8 @@ void scene_model::compute_forces()
         if (kv < N_dim - 2)
             force[k] += spring_force(position[k], position[size_t2{size_t(ku), size_t(kv + 2)}], 2 * L0_horizontal, K);
 
-            */
         const vec3 normal = normals[ku + N_dim * kv];
-        const vec3 wind_force = std::fabs(std::sin(position[k].y + 3 * timer.t)) * vec3{0, 1.0f, 0};
+        const vec3 wind_force = std::fabs(std::sin(position[k].y + 3 * timer.t)) * vec3{0, 1.0f, 0} + 0.3f * std::fabs(std::sin(timer.t)) * vec3{1.0f, 0, 0};
                 
         force[k] += user_parameters.wind * std::fabs(dot(normal, wind_force)) * wind_force;
       }
