@@ -124,9 +124,12 @@ void scene_model::compute_wind_force(const int ku, const int kv)
     size_t2 const k = {(size_t)ku, (size_t)kv};
 
     const vec3 normal = normals[ku + int(force.dimension[0]) * kv];
-    const vec3 wind_force = 2 * std::fabs(std::sin(5 * position[k].y + 5 * timer.t)) * vec3{0, 1.0f, 0};
+    const vec3 wind_force = 2  * vec3{0, 1.0f, 0};
 
-    force[k] += user_parameters.wind * std::fabs(dot(normal, wind_force)) * wind_force;
+    force[k] += 0.5f*  std::fabs(dot(normal, wind_force)) * wind_force;
+    force[k] += user_parameters.wind * std::fabs(dot(normal, {0, 0, -1.0f})) * vec3{0.0f, 0.0f, -1.0f};
+
+    force[k] += user_parameters.pressure * normal / norm(normal);
 
 }
 
@@ -136,7 +139,6 @@ void scene_model::collision_constraints()
 {
     // Handle collisions here (with the ground and the sphere)
     const float ground_height = collision_shapes.ground_height;
-    const float particle_radius = 0.005f;
     
     const size_t N = position.size();
     for(size_t k=0; k<N; ++k) {
@@ -149,8 +151,17 @@ void scene_model::collision_constraints()
         }
     }
 
-    for (auto it = collision_grid.begin(); it < collision_grid.end(); ++it)
-        it->clear();
+    self_collision();
+
+}
+
+void scene_model::self_collision()
+{
+    const float particle_radius = 0.005f;
+    const size_t N = position.size();
+
+    for (auto& it : collision_grid)
+        it.clear();
 
 
     float conversion_factor = 1.0f / cell_size;
@@ -199,9 +210,8 @@ void scene_model::collision_constraints()
 
     }
 
-
-
 }
+
 
 
 
@@ -265,8 +275,8 @@ void scene_model::setup_data(std::map<std::string,GLuint>& shaders, scene_struct
     gui.show_frame_camera = false;
 
     // Load textures
-    texture_cloth = create_texture_gpu(image_load_png("scenes/animation/02_simulation/assets/skydancer.png"));
-    texture_wood  = create_texture_gpu(image_load_png("scenes/animation/02_simulation/assets/wood.png"));
+    texture_cloth = create_texture_gpu(image_load_png("scenes/animation/02_simulation/assets/blue_dancer.png"));
+    texture_wood  = create_texture_gpu(image_load_png("scenes/animation/02_simulation/assets/parking.png"));
     shader_mesh = shaders["mesh_bf"];
 
     // Initialize cloth geometry and particles
@@ -277,6 +287,7 @@ void scene_model::setup_data(std::map<std::string,GLuint>& shaders, scene_struct
     user_parameters.m    = 5.0f;
     user_parameters.wind = 1.0f;
     user_parameters.mu   = 0.02f;
+    user_parameters.pressure = 4.0f;
 
     // Set collision shapes
     collision_shapes.ground_height = 0;
@@ -431,6 +442,7 @@ void scene_model::set_gui()
     ImGui::SliderFloat("Damping", &user_parameters.mu, 0.0f, 0.1f, "%.3f");
     ImGui::SliderFloat("Mass", &user_parameters.m, 1.0f, 15.0f, "%.2f");
     ImGui::SliderFloat("Wind", &user_parameters.wind, 0.0f, 30.0f, "%.2f");
+    ImGui::SliderFloat("Pressure", &user_parameters.pressure, 0.0f, 30.0f, "%.2f");
 
     ImGui::Checkbox("Wireframe",&gui_display_wireframe);
     ImGui::Checkbox("Texture",&gui_display_texture);
