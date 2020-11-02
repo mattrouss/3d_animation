@@ -27,11 +27,7 @@ void scene_model::compute_forces()
 
     simulation_parameters.m = user_parameters.m / float(N); // Constant total mass
 
-    // Get simuation parameters
-    const float K= user_parameters.K;
     const float m  = simulation_parameters.m;
-    const float L0_horizontal = simulation_parameters.L0_horizontal;
-    const float L0_vertical = simulation_parameters.L0_vertical;
 
     // Gravity
     const vec3 g = {0,-9.81f,0};
@@ -45,73 +41,93 @@ void scene_model::compute_forces()
 
     // Springs
     for(int ku=0; ku<N_dim; ++ku) {
-      for(int kv=0; kv<N_dim; ++kv) {
-        size_t2 const k = {(size_t)ku, (size_t)kv};
-        
-        // Add structural springs
-        if (kv == 0)
-            force[k] += spring_force(position[k], position[size_t2{size_t(ku), size_t(N_dim - 1)}], L0_horizontal, K);
-        if (kv == N_dim - 1)
-            force[k] += spring_force(position[k], position[size_t2{size_t(ku), 0u}], L0_horizontal, K);
-        if (ku > 0)
-            force[k] += spring_force(position[k], position[size_t2{size_t(ku - 1), size_t(kv)}], L0_vertical, K);
-        if (ku < N_dim - 1)
-            force[k] += spring_force(position[k], position[size_t2{size_t(ku + 1), size_t(kv)}], L0_vertical, K);
-        if (kv > 0)
-            force[k] += spring_force(position[k], position[size_t2{size_t(ku), size_t(kv - 1)}], L0_horizontal, K);
-        if (kv < N_dim - 1)
-            force[k] += spring_force(position[k], position[size_t2{size_t(ku), size_t(kv + 1)}], L0_horizontal, K);
-
-        // Add shearing springs
-        const float L0_diag = std::sqrt(std::pow(L0_horizontal, 2) + std::pow(L0_vertical, 2));
-        if (kv == 0)
-        {
-            if (ku > 0)
-                force[k] += spring_force(position[k], position[size_t2{size_t(ku - 1), size_t(N_dim - 1)}], L0_diag, K);
-            if (ku < N_dim - 1)
-                force[k] += spring_force(position[k], position[size_t2{size_t(ku + 1), size_t(N_dim - 1)}], L0_diag, K);
-        }
-        if (kv == N_dim - 1)
-        {
-            if (ku > 0)
-                force[k] += spring_force(position[k], position[size_t2{size_t(ku - 1), 0u}], L0_diag, K);
-            if (ku < N_dim - 1)
-                force[k] += spring_force(position[k], position[size_t2{size_t(ku + 1), 0u}], L0_diag, K);
-        }
-        if (ku > 0 && kv > 0)
-            force[k] += spring_force(position[k], position[size_t2{size_t(ku - 1), size_t(kv - 1)}], L0_diag, K);
-        if (ku < N_dim - 1 && kv < N_dim - 1)
-            force[k] += spring_force(position[k], position[size_t2{size_t(ku + 1), size_t(kv + 1)}], L0_diag, K);
-        if (ku > 0 && kv < N_dim - 1)
-            force[k] += spring_force(position[k], position[size_t2{size_t(ku - 1), size_t(kv + 1)}], L0_diag, K);
-        if (ku < N_dim - 1 && kv > 0)
-            force[k] += spring_force(position[k], position[size_t2{size_t(ku + 1), size_t(kv - 1)}], L0_diag, K);
-
-        // Add bending springs
-        if (kv == 0)
-            force[k] += spring_force(position[k], position[size_t2{size_t(ku), size_t(N_dim - 2)}], 2 * L0_horizontal, K);
-        if (kv == N_dim - 1)
-            force[k] += spring_force(position[k], position[size_t2{size_t(ku), 1u}], 2 * L0_horizontal, K);
-        if (kv == 1)
-            force[k] += spring_force(position[k], position[size_t2{size_t(ku), size_t(N_dim - 1)}], 2 * L0_horizontal, K);
-        if (kv == N_dim - 2)
-            force[k] += spring_force(position[k], position[size_t2{size_t(ku), 0u}], 2 * L0_horizontal, K);
-
-        if (ku > 1)
-            force[k] += spring_force(position[k], position[size_t2{size_t(ku - 2), size_t(kv)}], 2 * L0_vertical, K);
-        if (ku < N_dim - 2)
-            force[k] += spring_force(position[k], position[size_t2{size_t(ku + 2), size_t(kv)}], 2 * L0_vertical, K);
-        if (kv > 1)
-            force[k] += spring_force(position[k], position[size_t2{size_t(ku), size_t(kv - 2)}], 2 * L0_horizontal, K);
-        if (kv < N_dim - 2)
-            force[k] += spring_force(position[k], position[size_t2{size_t(ku), size_t(kv + 2)}], 2 * L0_horizontal, K);
-
-        const vec3 normal = normals[ku + N_dim * kv];
-        const vec3 wind_force = std::fabs(std::sin(position[k].y + 3 * timer.t)) * vec3{0, 1.0f, 0} + 0.3f * std::fabs(std::sin(timer.t)) * vec3{1.0f, 0, 0};
-                
-        force[k] += user_parameters.wind * std::fabs(dot(normal, wind_force)) * wind_force;
-      }
+        for(int kv=0; kv<N_dim; ++kv) {
+            compute_spring_forces(ku, kv);
+            compute_wind_force(ku, kv);
+        } 
     }
+}
+
+void scene_model::compute_spring_forces(const int ku, const int kv)
+{
+    const int N_dim = int(force.dimension[0]); // Number of particles along one dimension
+
+    // Get simuation parameters
+    const float K = user_parameters.K;
+    const float L0_horizontal = simulation_parameters.L0_horizontal;
+    const float L0_vertical = simulation_parameters.L0_vertical;
+
+    size_t2 const k = {(size_t)ku, (size_t)kv};
+
+    // Add structural springs
+    if (kv == 0)
+        force[k] += spring_force(position[k], position[size_t2{size_t(ku), size_t(N_dim - 1)}], L0_horizontal, K);
+    if (kv == N_dim - 1)
+        force[k] += spring_force(position[k], position[size_t2{size_t(ku), 0u}], L0_horizontal, K);
+    if (ku > 0)
+        force[k] += spring_force(position[k], position[size_t2{size_t(ku - 1), size_t(kv)}], L0_vertical, K);
+    if (ku < N_dim - 1)
+        force[k] += spring_force(position[k], position[size_t2{size_t(ku + 1), size_t(kv)}], L0_vertical, K);
+    if (kv > 0)
+        force[k] += spring_force(position[k], position[size_t2{size_t(ku), size_t(kv - 1)}], L0_horizontal, K);
+    if (kv < N_dim - 1)
+        force[k] += spring_force(position[k], position[size_t2{size_t(ku), size_t(kv + 1)}], L0_horizontal, K);
+
+    // Add shearing springs
+    const float L0_diag = std::sqrt(std::pow(L0_horizontal, 2) + std::pow(L0_vertical, 2));
+    if (kv == 0)
+    {
+        if (ku > 0)
+            force[k] += spring_force(position[k], position[size_t2{size_t(ku - 1), size_t(N_dim - 1)}], L0_diag, K);
+        if (ku < N_dim - 1)
+            force[k] += spring_force(position[k], position[size_t2{size_t(ku + 1), size_t(N_dim - 1)}], L0_diag, K);
+    }
+    if (kv == N_dim - 1)
+    {
+        if (ku > 0)
+            force[k] += spring_force(position[k], position[size_t2{size_t(ku - 1), 0u}], L0_diag, K);
+        if (ku < N_dim - 1)
+            force[k] += spring_force(position[k], position[size_t2{size_t(ku + 1), 0u}], L0_diag, K);
+    }
+    if (ku > 0 && kv > 0)
+        force[k] += spring_force(position[k], position[size_t2{size_t(ku - 1), size_t(kv - 1)}], L0_diag, K);
+    if (ku < N_dim - 1 && kv < N_dim - 1)
+        force[k] += spring_force(position[k], position[size_t2{size_t(ku + 1), size_t(kv + 1)}], L0_diag, K);
+    if (ku > 0 && kv < N_dim - 1)
+        force[k] += spring_force(position[k], position[size_t2{size_t(ku - 1), size_t(kv + 1)}], L0_diag, K);
+    if (ku < N_dim - 1 && kv > 0)
+        force[k] += spring_force(position[k], position[size_t2{size_t(ku + 1), size_t(kv - 1)}], L0_diag, K);
+
+    // Add bending springs
+    if (kv == 0)
+        force[k] += spring_force(position[k], position[size_t2{size_t(ku), size_t(N_dim - 2)}], 2 * L0_horizontal, K);
+    if (kv == N_dim - 1)
+        force[k] += spring_force(position[k], position[size_t2{size_t(ku), 1u}], 2 * L0_horizontal, K);
+    if (kv == 1)
+        force[k] += spring_force(position[k], position[size_t2{size_t(ku), size_t(N_dim - 1)}], 2 * L0_horizontal, K);
+    if (kv == N_dim - 2)
+        force[k] += spring_force(position[k], position[size_t2{size_t(ku), 0u}], 2 * L0_horizontal, K);
+
+    if (ku > 1)
+        force[k] += spring_force(position[k], position[size_t2{size_t(ku - 2), size_t(kv)}], 2 * L0_vertical, K);
+    if (ku < N_dim - 2)
+        force[k] += spring_force(position[k], position[size_t2{size_t(ku + 2), size_t(kv)}], 2 * L0_vertical, K);
+    if (kv > 1)
+        force[k] += spring_force(position[k], position[size_t2{size_t(ku), size_t(kv - 2)}], 2 * L0_horizontal, K);
+    if (kv < N_dim - 2)
+        force[k] += spring_force(position[k], position[size_t2{size_t(ku), size_t(kv + 2)}], 2 * L0_horizontal, K);
+
+}
+
+void scene_model::compute_wind_force(const int ku, const int kv)
+{
+    size_t2 const k = {(size_t)ku, (size_t)kv};
+
+    const vec3 normal = normals[ku + int(force.dimension[0]) * kv];
+    const vec3 wind_force = 2 * std::fabs(std::sin(5 * position[k].y + 5 * timer.t)) * vec3{0, 1.0f, 0};
+
+    force[k] += user_parameters.wind * std::fabs(dot(normal, wind_force)) * wind_force;
+
 }
 
 
@@ -119,10 +135,8 @@ void scene_model::compute_forces()
 void scene_model::collision_constraints()
 {
     // Handle collisions here (with the ground and the sphere)
-
-
-
     const float ground_height = collision_shapes.ground_height;
+    const float particle_radius = 0.005f;
     
     const size_t N = position.size();
     for(size_t k=0; k<N; ++k) {
@@ -134,6 +148,59 @@ void scene_model::collision_constraints()
             p.y = ground_height;
         }
     }
+
+    for (auto it = collision_grid.begin(); it < collision_grid.end(); ++it)
+        it->clear();
+
+
+    float conversion_factor = 1.0f / cell_size;
+    for (size_t i = 0; i < N; ++i)
+    {
+        vec3 p = position[i] - grid_min;
+        size_t hash = p.x + p.z * conversion_factor + p.y * conversion_factor * conversion_factor;
+        collision_grid[hash].push_back(i);
+    }
+
+    for (auto cell = collision_grid.begin(); cell < collision_grid.end(); ++cell)
+    {
+        const size_t N_cell = cell->size();
+        // Self collision detection
+        for (size_t i = 0; i < N_cell; ++i)
+        {
+            size_t index_1 = (*cell)[i];
+            vec3 &p1 = position[index_1];
+            for (size_t j = 0; j < N_cell; ++j)
+            {
+                if (i == j)
+                    continue;
+
+                size_t index_2 = (*cell)[j];
+                vec3 &p2 = position[index_2];
+
+                const vec3 delta = p1 - p2;
+                const float dist = norm(delta);
+                const vec3 u = (1 / dist) * delta;
+                if (dist < 2 * particle_radius)
+                {
+                    vec3& v1 = speed[index_2];
+                    vec3& v2 = speed[index_2];
+    
+                    const vec3 v_orth = dot(v2 - v1, u) * u;
+                    v1 -= v_orth;
+                    v2 += v_orth;
+    
+                    float d = 2 * particle_radius - dist + 1E-3;
+                    p1 += 0.5 * d * u;
+                    p2 -= 0.5 * d * u;
+                }
+            }
+        }
+
+
+    }
+
+
+
 }
 
 
@@ -157,6 +224,9 @@ void scene_model::initialize()
 
     // Set particle position from cloth geometry
     position = buffer2D_from_vector(base_dancer.position, N_cloth, N_cloth);
+
+    // Initialize collision accelerator grid
+    collision_grid.resize(collision_grid_dim * collision_grid_dim * collision_grid_dim);
 
     // Set hard positional constraints
     positional_constraints.clear();
@@ -195,7 +265,7 @@ void scene_model::setup_data(std::map<std::string,GLuint>& shaders, scene_struct
     gui.show_frame_camera = false;
 
     // Load textures
-    texture_cloth = create_texture_gpu(image_load_png("scenes/animation/02_simulation/assets/cloth.png"));
+    texture_cloth = create_texture_gpu(image_load_png("scenes/animation/02_simulation/assets/skydancer.png"));
     texture_wood  = create_texture_gpu(image_load_png("scenes/animation/02_simulation/assets/wood.png"));
     shader_mesh = shaders["mesh_bf"];
 
@@ -305,57 +375,6 @@ void scene_model::display_elements(std::map<std::string,GLuint>& shaders, scene_
     }
 
     sphere.uniform.color = {1,0,0};
-
-    const int N_dim = int(force.dimension[0]);
-    for(int ku=0; ku<N_dim; ++ku) {
-        for(int kv=0; kv<N_dim; ++kv) {
-            size_t2 const k = {(size_t)ku, (size_t)kv};
-            vec3& p = position[k];
-
-            sphere.uniform.transform.translation = p;
-            draw(sphere, scene.camera, shaders["mesh"]);
-
-            /*
-            // Add structural springs
-            if (kv == 0) {
-                segment_drawer.uniform_parameter.p1 = position[k];
-                segment_drawer.uniform_parameter.p2 = position[size_t2{size_t(ku), size_t(N_dim - 1)}];
-                segment_drawer.draw(shaders["segment_im"],scene.camera);
-            }
-            if (ku > 0) {
-                segment_drawer.uniform_parameter.p1 = position[k];
-                segment_drawer.uniform_parameter.p2 = position[size_t2{size_t(ku - 1), size_t(kv)}];
-                segment_drawer.draw(shaders["segment_im"],scene.camera);
-            }
-            if (ku < N_dim - 1) {
-                segment_drawer.uniform_parameter.p1 = position[k];
-                segment_drawer.uniform_parameter.p2 = position[size_t2{size_t(ku + 1), size_t(kv)}];
-                segment_drawer.draw(shaders["segment_im"],scene.camera);
-            }
-            if (kv > 0) {
-                segment_drawer.uniform_parameter.p1 = position[k];
-                segment_drawer.uniform_parameter.p2 = position[size_t2{size_t(ku), size_t(kv - 1)}];
-                segment_drawer.draw(shaders["segment_im"],scene.camera);
-            }
-            if (kv < N_dim - 1) {
-            segment_drawer.uniform_parameter.p1 = position[k];
-            segment_drawer.uniform_parameter.p2 = position[size_t2{size_t(ku), size_t(kv + 1)}];
-            segment_drawer.draw(shaders["segment_im"],scene.camera);
-            }
-            */
-        }
-    }
-
-    segment_drawer.uniform_parameter.color = {0,1,0};
-    const vec3 p1 = position[size_t2{0u, 0u}];
-    const vec3 p2 = position[size_t2{0u, 1u}];
-    segment_drawer.uniform_parameter.p1 = p1;
-    const vec3 p12 = p2 - p1;
-    const float theta = static_cast<float>( 2* 3.14159f / float(N_dim));
-    const float L = 0.5f * std::tan(theta);
-    segment_drawer.uniform_parameter.p2 = L * p12 / norm(p12) + p1;
-    segment_drawer.draw(shaders["segment_im"],scene.camera);
-    segment_drawer.uniform_parameter.color = {0,0,1};
 
     // Display ground
     draw(ground, scene.camera);

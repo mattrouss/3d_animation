@@ -47,6 +47,13 @@ struct scene_model : scene_base
     // Parameters of the shape used for collision
     collision_shapes_structure collision_shapes;
 
+    // Acceleration grid for cloth-on-cloth collisions
+    const float cell_size = 0.5f;
+    const size_t collision_grid_dim = 20u;
+    const vcl::vec3 grid_min = {-5.0f, -5.0f, -5.0f};
+    const vcl::vec3 grid_max = {5.0f, 5.0f, 5.0f};
+    std::vector<std::vector<size_t>> collision_grid;
+
     // Store index and position of vertices constrained to have a fixed 3D position
     std::map<int,vcl::vec3> positional_constraints;
 
@@ -76,6 +83,8 @@ struct scene_model : scene_base
     void initialize();
     void collision_constraints();
     void compute_forces();
+    void compute_spring_forces(const int ku, const int kv);
+    void compute_wind_force(const int ku, const int kv);
     void numerical_integration(float h);
     void detect_simulation_divergence();
     void hard_constraints();
