@@ -286,8 +286,9 @@ void scene_model::setup_data(std::map<std::string,GLuint>& shaders, scene_struct
     {
         gui.show_frame_camera = false;
 
+        std::string colors[3] = {"yellow_dancer.png", "blue_dancer.png", "green_dancer.png"};
         // Load textures
-        skydancers[i].texture_cloth = create_texture_gpu(image_load_png("scenes/animation/02_simulation/assets/blue_dancer.png"));
+        skydancers[i].texture_cloth = create_texture_gpu(image_load_png("scenes/animation/02_simulation/assets/" + colors[i]));
         skydancers[i].texture_wood  = create_texture_gpu(image_load_png("scenes/animation/02_simulation/assets/parking.png"));
         skydancers[i].shader_mesh = shaders["mesh_bf"];
 

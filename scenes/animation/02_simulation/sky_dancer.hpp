@@ -3,6 +3,7 @@
 #include "main/scene_base/base.hpp"
 #include <math.h>
 #include <algorithm>
+#include <string>
 
 #ifdef SCENE_SKY_DANCER
 
