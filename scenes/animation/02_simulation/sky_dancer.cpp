@@ -121,16 +121,22 @@ void scene_model::compute_spring_forces(const int ku, const int kv)
 
 void scene_model::compute_wind_force(const int ku, const int kv)
 {
-    size_t2 const k = {(size_t)ku, (size_t)kv};
+    // TO DO : add id to witch skydancer is being updated
+    
+    timer.update();
+    const float time = timer.t;
+    float periodic_y = abs(1.5 * pow(cos(time), 4) + sin(time) + 3 * pow(sin(time), 5));
+    float periodic_x = pow(cos(time), 3) + pow(sin(time), 3); 
+    
+    size_t2 const k = {(size_t)ku, (size_t)kv}; // pixel indexes
 
-    const vec3 normal = normals[ku + int(force.dimension[0]) * kv];
-    const vec3 wind_force = 2  * vec3{0, 1.0f, 0};
+    const vec3 normal = normals[ku + int(force.dimension[0]) * kv]; 
+    const vec3 wind_force = 2  * vec3{periodic_x, periodic_y, 0};
 
     force[k] += 0.5f*  std::fabs(dot(normal, wind_force)) * wind_force;
     force[k] += user_parameters.wind * std::fabs(dot(normal, {0, 0, -1.0f})) * vec3{0.0f, 0.0f, -1.0f};
 
     force[k] += user_parameters.pressure * normal / norm(normal);
-
 }
 
 
