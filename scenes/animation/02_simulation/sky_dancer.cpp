@@ -123,8 +123,9 @@ void scene_model::skydancer::compute_wind_force(const int ku, const int kv, cons
 {    
     timer.update();
     const float time = timer.t;
-    float periodic_y = abs(1.5 * cos(time + id) + sin(time + id) + 3 *sin(time));
-    float periodic_x = cos(time + id ) + sin(time + id); 
+    
+    float periodic_y = abs(1.5 * pow(cos(time), 4) + sin(time + id) + 3 * pow(sin(time), 5));
+    float periodic_x = cos(time) + sin(time);
     
     size_t2 const k = {(size_t)ku, (size_t)kv}; // pixel indexes
 
