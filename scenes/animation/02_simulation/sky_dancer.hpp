@@ -40,8 +40,6 @@ struct scene_model : scene_base
     simulation_parameters_structure simulation_parameters; // parameters that user can control directly
     user_parameters_structure user_parameters;             // parameters adjusted with respect to mesh size (not controled directly by the user)
     
-    size_t resolution = 40u;
-    size_t old_resolution = 40u;
 
     // Gui parameters
     bool gui_display_wireframe;
@@ -89,7 +87,7 @@ struct scene_model : scene_base
     GLuint shader_mesh;  
 
 
-    void initialize(const size_t id);
+    void initialize(const size_t id, size_t resolution);
     void collision_constraints();
     void self_collision();
     void compute_forces(const float id, vcl::timer_event timer);
@@ -102,6 +100,8 @@ struct scene_model : scene_base
     
     };
 
+    size_t resolution = 40u;
+    size_t old_resolution = 40u;
     std::vector<skydancer> skydancers;
     
 

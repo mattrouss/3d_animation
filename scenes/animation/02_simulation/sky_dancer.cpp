@@ -123,8 +123,8 @@ void scene_model::skydancer::compute_wind_force(const int ku, const int kv, cons
 {    
     timer.update();
     const float time = timer.t;
-    float periodic_y = abs(1.5 * pow(cos(time + id), 4) + sin(time + id) + 3 * pow(sin(time), 5));
-    float periodic_x = pow(cos(time + id ), 3) + pow(sin(time + id), 3); 
+    float periodic_y = abs(1.5 * cos(time + id) + sin(time + id) + 3 *sin(time));
+    float periodic_x = cos(time + id ) + sin(time + id); 
     
     size_t2 const k = {(size_t)ku, (size_t)kv}; // pixel indexes
 
@@ -132,7 +132,7 @@ void scene_model::skydancer::compute_wind_force(const int ku, const int kv, cons
     const vec3 wind_force = 2  * vec3{periodic_x, periodic_y, 0};
 
     force[k] += 0.5f*  std::fabs(dot(normal, wind_force)) * wind_force;
-    force[k] += user_parameters.wind/2 * std::fabs(dot(normal, {0, 0, -1.0f})) * vec3{0.0f, 0.0f, -1.0f};
+    force[k] += user_parameters.wind * std::fabs(dot(normal, {0, 0, -1.0f})) * vec3{0.0f, 0.0f, -1.0f};
 
     force[k] += user_parameters.pressure * normal / norm(normal);
 }
@@ -220,7 +220,7 @@ void scene_model::skydancer::self_collision()
 
 
 // Initialize the geometrical model
-void scene_model::skydancer::initialize(const size_t idx)
+void scene_model::skydancer::initialize(const size_t idx, size_t resolution)
 {
     // Number of samples of the model (total number of particles is N_cloth x N_cloth)
     const size_t N_cloth = resolution;
@@ -239,7 +239,7 @@ void scene_model::skydancer::initialize(const size_t idx)
     auto v2 = vec3({2.5, 0, 0.5});
     auto v3 = vec3({-2.5, 0, 0.5});
     std::vector<vec3> positions({v1, v2, v3});
-    const mesh base_dancer = mesh_primitive_cylinder(radius, positions[idx], {0, height, 0}, N_cloth, N_cloth, true);
+    const mesh base_dancer = mesh_primitive_cylinder(radius, positions[idx], positions[idx] + vec3{0, height, 0}, N_cloth, N_cloth, true);
 
     // Set particle position from cloth geometry
     position = buffer2D_from_vector(base_dancer.position, N_cloth, N_cloth);
@@ -293,7 +293,7 @@ void scene_model::setup_data(std::map<std::string,GLuint>& shaders, scene_struct
         skydancers[i].shader_mesh = shaders["mesh_bf"];
 
         // Initialize cloth geometry and particles
-        skydancers[i].initialize(i);
+        skydancers[i].initialize(i, resolution);
 
         // Default value for simulation parameters
         skydancers[i].user_parameters.K    = 600.0f;
@@ -459,7 +459,7 @@ void scene_model::set_gui()
     ImGui::SliderFloat("Time scale", &timer.scale, 0.05f, 2.0f, "%.2f s");
     size_t resolution_min = 3u;
     size_t resolution_max = 50u;
-    ImGui::SliderScalar("Resolution", ImGuiDataType_U64, &skydancers[0].resolution, &resolution_min, &resolution_max);
+    ImGui::SliderScalar("Resolution", ImGuiDataType_U64, &resolution, &resolution_min, &resolution_max);
 
     ImGui::SliderFloat("Stiffness", &skydancers[0].user_parameters.K, 1.0f, 3000.0f, "%.2f");
     ImGui::SliderFloat("Damping", &skydancers[0].user_parameters.mu, 0.0f, 0.1f, "%.3f");
@@ -472,8 +472,7 @@ void scene_model::set_gui()
 
     bool const stop  = ImGui::Button("Stop anim"); ImGui::SameLine();
     bool const start = ImGui::Button("Start anim");
-
-    skydancers.resize(3);
+    bool const restart = ImGui::Button("Restart");
 
     for(int i = 0; i < 3; i++)
     {
@@ -485,15 +484,15 @@ void scene_model::set_gui()
             timer.start();
         }
 
-        if (skydancers[i].resolution != skydancers[i].old_resolution)
+        if (resolution != old_resolution)
         {
-            skydancers[i].old_resolution = skydancers[i].resolution;
+            if (i == 2)
+                old_resolution = resolution;
 
-            skydancers[i].initialize(i);
+            skydancers[i].initialize(i, resolution);
         }
 
-        bool const restart = ImGui::Button("Restart");
-        if(restart) skydancers[i].initialize(i);
+        if(restart) skydancers[i].initialize(i, resolution);
     }
 }
 
