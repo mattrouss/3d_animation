@@ -114,11 +114,11 @@ void scene_model::collision_constraints()
         const vec3 delta = p - sphere_position;
         const float dist = norm(delta);
         const vec3 normal = (1 / dist) * delta;
-        if (dist < sphere_radius + 1E-3)
+        if (dist < sphere_radius + 1E-2)
         {
             const vec3 v_orth = dot(v, normal) * normal;
             v -= v_orth;
-            p += (sphere_radius - dist + 1E-3) / dist * delta;
+            p += (sphere_radius - dist + 1E-2) / dist * delta;
         }
     }
 }
