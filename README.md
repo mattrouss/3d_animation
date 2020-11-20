@@ -30,7 +30,15 @@ We can then attach the bottom ring of the cylinder to the ground, and apply some
 
 The cloth simulation was implemented using a classic **mass-spring** modelisation, where the cloth is divided in a uniform set of particles. Each particle interacts with its neighbours with different types of springs: *structural, shearing and bending*. These interactions give the structure and behaviour of a regular cloth, once we tweak the parameters. To this we can add collision with the ground and geometrical objects such as spheres, and apply a wind force to the particles.
 
+![collisions!](images/cloth_collision.gif)
+![wind!](images/wind_cloth.gif)
 
 ## Skydancer
 
 After rolling the cloth into a tube, we're almost good to go ! Adding a pressure force in the direction of the cloth normal gives the dancer a more *inflated* look to it.
+![skydancer with wind!](images/dancer_wind.gif)
+
+Now make them dance!
+
+![dance](images/skydancer.gif)
+
