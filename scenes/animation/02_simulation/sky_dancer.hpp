@@ -1,6 +1,9 @@
 #pragma once
 
 #include "main/scene_base/base.hpp"
+#include <math.h>
+#include <algorithm>
+#include <string>
 
 #ifdef SCENE_SKY_DANCER
 
@@ -31,15 +34,28 @@ struct collision_shapes_structure
 
 struct scene_model : scene_base
 {
+    vcl::timer_event timer;
+    struct skydancer {
+     // Simulation parameters
+    simulation_parameters_structure simulation_parameters; // parameters that user can control directly
+    user_parameters_structure user_parameters;             // parameters adjusted with respect to mesh size (not controled directly by the user)
+    
+    size_t resolution = 40u;
+    size_t old_resolution = 40u;
+
+    // Gui parameters
+    bool gui_display_wireframe;
+    bool gui_display_texture;
+
+    vcl::mesh_drawable ground;
+   
+
     // Particles parameters
     vcl::buffer2D<vcl::vec3> position;
     vcl::buffer2D<vcl::vec3> speed;
     vcl::buffer2D<vcl::vec3> force;
 
-    // Simulation parameters
-    simulation_parameters_structure simulation_parameters; // parameters that user can control directly
-    user_parameters_structure user_parameters;             // parameters adjusted with respect to mesh size (not controled directly by the user)
-
+   
     // Cloth mesh elements
     vcl::mesh_drawable cloth;              // Visual model for the cloth
     vcl::buffer<vcl::vec3> normals;        // Normal of the cloth used for rendering and wind force computation
@@ -64,38 +80,36 @@ struct scene_model : scene_base
 
     // Visual elements of the scene
     vcl::mesh_drawable sphere;
-    vcl::mesh_drawable ground;
     vcl::segment_drawable_immediate_mode segment_drawer;
-
-    // Gui parameters
-    bool gui_display_wireframe;
-    bool gui_display_texture;
 
     // Parameters used to control if the simulation runs when a numerical divergence is detected
     bool simulation_diverged; // Active when divergence is detected
     bool force_simulation;    // Force to run simulation even if divergence is detected
-    size_t resolution = 40u;
-    size_t old_resolution = 40u;
-    GLuint shader_mesh;
-
-    vcl::timer_event timer;
+  
+    GLuint shader_mesh;  
 
 
-    void initialize();
+    void initialize(const size_t id);
     void collision_constraints();
     void self_collision();
-    void compute_forces();
+    void compute_forces(const float id, vcl::timer_event timer);
     void compute_spring_forces(const int ku, const int kv);
-    void compute_wind_force(const int ku, const int kv);
+    void compute_wind_force(const int ku, const int kv, const float id, vcl::timer_event timer);
     void numerical_integration(float h);
-    void detect_simulation_divergence();
+    void detect_simulation_divergence(vcl::timer_event timer);
     void hard_constraints();
+    void display_elements(std::map<std::string,GLuint>& shaders, scene_structure& scene, gui_structure& gui);
+    
+    };
+
+    std::vector<skydancer> skydancers;
+    
+
     void set_gui();
-
-
     void setup_data(std::map<std::string,GLuint>& shaders, scene_structure& scene, gui_structure& gui);
     void frame_draw(std::map<std::string,GLuint>& shaders, scene_structure& scene, gui_structure& gui);
-    void display_elements(std::map<std::string,GLuint>& shaders, scene_structure& scene, gui_structure& gui);
+    void display_ground(scene_structure& scene, gui_structure& gui);
+    
 };
 
 

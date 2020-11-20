@@ -20,7 +20,7 @@ vec3 spring_force(const vec3& pi, const vec3& pj, float L0, float K)
 // - Drag
 // - Spring force
 // - Wind force
-void scene_model::compute_forces()
+void scene_model::skydancer::compute_forces(const float i, vcl::timer_event timer)
 {
     const size_t N = force.size();        // Total number of particles of the cloth Nu x Nv
     const int N_dim = int(force.dimension[0]); // Number of particles along one dimension (square dimension)
@@ -43,12 +43,12 @@ void scene_model::compute_forces()
     for(int ku=0; ku<N_dim; ++ku) {
         for(int kv=0; kv<N_dim; ++kv) {
             compute_spring_forces(ku, kv);
-            compute_wind_force(ku, kv);
+            compute_wind_force(ku, kv, i, timer);
         } 
     }
 }
 
-void scene_model::compute_spring_forces(const int ku, const int kv)
+void scene_model::skydancer::compute_spring_forces(const int ku, const int kv)
 {
     const int N_dim = int(force.dimension[0]); // Number of particles along one dimension
 
@@ -119,14 +119,12 @@ void scene_model::compute_spring_forces(const int ku, const int kv)
 
 }
 
-void scene_model::compute_wind_force(const int ku, const int kv)
-{
-    // TO DO : add id to witch skydancer is being updated
-    
+void scene_model::skydancer::compute_wind_force(const int ku, const int kv, const float id, vcl::timer_event timer)
+{    
     timer.update();
     const float time = timer.t;
-    float periodic_y = abs(1.5 * pow(cos(time), 4) + sin(time) + 3 * pow(sin(time), 5));
-    float periodic_x = pow(cos(time), 3) + pow(sin(time), 3); 
+    float periodic_y = abs(1.5 * pow(cos(time + id), 4) + sin(time + id) + 3 * pow(sin(time), 5));
+    float periodic_x = pow(cos(time + id ), 3) + pow(sin(time + id), 3); 
     
     size_t2 const k = {(size_t)ku, (size_t)kv}; // pixel indexes
 
@@ -134,14 +132,14 @@ void scene_model::compute_wind_force(const int ku, const int kv)
     const vec3 wind_force = 2  * vec3{periodic_x, periodic_y, 0};
 
     force[k] += 0.5f*  std::fabs(dot(normal, wind_force)) * wind_force;
-    force[k] += user_parameters.wind * std::fabs(dot(normal, {0, 0, -1.0f})) * vec3{0.0f, 0.0f, -1.0f};
+    force[k] += user_parameters.wind/2 * std::fabs(dot(normal, {0, 0, -1.0f})) * vec3{0.0f, 0.0f, -1.0f};
 
     force[k] += user_parameters.pressure * normal / norm(normal);
 }
 
 
 // Handle detection and response to collision with the shape described in "collision_shapes" variable
-void scene_model::collision_constraints()
+void scene_model::skydancer::collision_constraints()
 {
     // Handle collisions here (with the ground and the sphere)
     const float ground_height = collision_shapes.ground_height;
@@ -161,7 +159,7 @@ void scene_model::collision_constraints()
 
 }
 
-void scene_model::self_collision()
+void scene_model::skydancer::self_collision()
 {
     const float particle_radius = 0.005f;
     const size_t N = position.size();
@@ -222,7 +220,7 @@ void scene_model::self_collision()
 
 
 // Initialize the geometrical model
-void scene_model::initialize()
+void scene_model::skydancer::initialize(const size_t idx)
 {
     // Number of samples of the model (total number of particles is N_cloth x N_cloth)
     const size_t N_cloth = resolution;
@@ -235,8 +233,13 @@ void scene_model::initialize()
     simulation_parameters.L0_vertical = height/float(N_cloth-1);
 
     // Create cloth mesh in its initial position
-    // Horizontal grid of length 1 x 1
-    const mesh base_dancer = mesh_primitive_cylinder(radius, {0, 0, 0}, {0, height, 0}, N_cloth, N_cloth, true);
+    // Horizontal grid of length 1 x 1ve
+
+    auto v1 = vec3({0, 0, 0});
+    auto v2 = vec3({2.5, 0, 0.5});
+    auto v3 = vec3({-2.5, 0, 0.5});
+    std::vector<vec3> positions({v1, v2, v3});
+    const mesh base_dancer = mesh_primitive_cylinder(radius, positions[idx], {0, height, 0}, N_cloth, N_cloth, true);
 
     // Set particle position from cloth geometry
     position = buffer2D_from_vector(base_dancer.position, N_cloth, N_cloth);
@@ -273,74 +276,84 @@ void scene_model::initialize()
     simulation_diverged = false;
     force_simulation    = false;
 
-    timer.update();
+    //timer.update();
 }
 
 void scene_model::setup_data(std::map<std::string,GLuint>& shaders, scene_structure& , gui_structure& gui)
 {
-    gui.show_frame_camera = false;
+    skydancers.resize(3);
+    for (size_t i = 0; i < 3;i++)
+    {
+        gui.show_frame_camera = false;
 
-    // Load textures
-    texture_cloth = create_texture_gpu(image_load_png("scenes/animation/02_simulation/assets/blue_dancer.png"));
-    texture_wood  = create_texture_gpu(image_load_png("scenes/animation/02_simulation/assets/parking.png"));
-    shader_mesh = shaders["mesh_bf"];
+        std::string colors[3] = {"yellow_dancer.png", "blue_dancer.png", "green_dancer.png"};
+        // Load textures
+        skydancers[i].texture_cloth = create_texture_gpu(image_load_png("scenes/animation/02_simulation/assets/" + colors[i]));
+        skydancers[i].texture_wood  = create_texture_gpu(image_load_png("scenes/animation/02_simulation/assets/parking.png"));
+        skydancers[i].shader_mesh = shaders["mesh_bf"];
 
-    // Initialize cloth geometry and particles
-    initialize();
+        // Initialize cloth geometry and particles
+        skydancers[i].initialize(i);
 
-    // Default value for simulation parameters
-    user_parameters.K    = 600.0f;
-    user_parameters.m    = 5.0f;
-    user_parameters.wind = 1.0f;
-    user_parameters.mu   = 0.02f;
-    user_parameters.pressure = 4.0f;
+        // Default value for simulation parameters
+        skydancers[i].user_parameters.K    = 600.0f;
+        skydancers[i].user_parameters.m    = 5.0f;
+        skydancers[i].user_parameters.wind = 1.0f;
+        skydancers[i].user_parameters.mu   = 0.02f;
+        skydancers[i].user_parameters.pressure = 4.0f;
 
-    // Set collision shapes
-    collision_shapes.ground_height = 0;
+        // Set collision shapes
+        skydancers[i].collision_shapes.ground_height = 0;
 
-    const float half_width_ground = 5.0f;
-    ground = mesh_drawable(mesh_primitive_quad({-half_width_ground,collision_shapes.ground_height-1e-3f,-half_width_ground}, {half_width_ground,collision_shapes.ground_height-1e-3f,-half_width_ground}, {half_width_ground,collision_shapes.ground_height-1e-3f,half_width_ground}, {-half_width_ground,collision_shapes.ground_height-1e-3f,half_width_ground}));
-    ground.shader = shaders["mesh_bf"];
-    ground.texture_id = texture_wood;
+        const float half_width_ground = 5.0f;
+        skydancers[i].ground = mesh_drawable(mesh_primitive_quad({-half_width_ground,skydancers[i].collision_shapes.ground_height-1e-3f,-half_width_ground}, {half_width_ground, skydancers[i].collision_shapes.ground_height-1e-3f,-half_width_ground}, {half_width_ground,skydancers[i].collision_shapes.ground_height-1e-3f,half_width_ground}, {-half_width_ground,skydancers[i].collision_shapes.ground_height-1e-3f,half_width_ground}));
+        skydancers[i].ground.shader = shaders["mesh_bf"];
+        skydancers[i].ground.texture_id = skydancers[i].texture_wood;
 
-    gui_display_texture = true;
-    gui_display_wireframe = false;
+        skydancers[i].gui_display_texture = true;
+        skydancers[i].gui_display_wireframe = false;
+    }
 }
 
 void scene_model::frame_draw(std::map<std::string,GLuint>& shaders, scene_structure& scene, gui_structure& gui)
 {
     const float dt = timer.update();
     set_gui();
-
-    // Force constant simulation time step
-    float h = dt<=1e-6f? 0.0f : timer.scale*0.001f;
-
-    if( (!simulation_diverged || force_simulation) && h>0)
+    for(size_t i = 0; i < 3; i++)
     {
-        // Iterate over a fixed number of substeps between each frames
-        const size_t number_of_substeps = 4;
-        for(size_t k=0; (!simulation_diverged  || force_simulation) && k<number_of_substeps; ++k)
+        
+
+        // Force constant simulation time step
+        float h = dt<=1e-6f? 0.0f : timer.scale*0.001f;
+
+        if( (!skydancers[i].simulation_diverged || skydancers[i].force_simulation) && h>0)
         {
-            compute_forces();
-            numerical_integration(h);
-            collision_constraints();                 // Detect and solve collision with other shapes
+            // Iterate over a fixed number of substeps between each frames
+            const size_t number_of_substeps = 4;
+            for(size_t k=0; (!skydancers[i].simulation_diverged  || skydancers[i].force_simulation) && k<number_of_substeps; ++k)
+            {
+                skydancers[i].compute_forces(i, timer);
+                skydancers[i].numerical_integration(h);
+                skydancers[i].collision_constraints();                 // Detect and solve collision with other shapes
 
-            hard_constraints();                      // Enforce hard positional constraints
+                skydancers[i].hard_constraints();                      // Enforce hard positional constraints
 
-            normal(position.data, connectivity, normals); // Update normals of the cloth
-            detect_simulation_divergence();               // Check if the simulation seems to diverge
+                normal(skydancers[i].position.data, skydancers[i].connectivity, skydancers[i].normals); // Update normals of the cloth
+                skydancers[i].detect_simulation_divergence(timer);               // Check if the simulation seems to diverge
+            }
         }
+
+
+        skydancers[i].cloth.update_position(skydancers[i].position.data);
+        skydancers[i].cloth.update_normal(skydancers[i].normals.data);
+
+       skydancers[i]. display_elements(shaders, scene, gui);
     }
-
-
-    cloth.update_position(position.data);
-    cloth.update_normal(normals.data);
-
-    display_elements(shaders, scene, gui);
+    display_ground(scene, gui);
 
 }
 
-void scene_model::numerical_integration(float h)
+void scene_model::skydancer::numerical_integration(float h)
 {
     const size_t NN = position.size();
     const float m = simulation_parameters.m;
@@ -356,7 +369,7 @@ void scene_model::numerical_integration(float h)
     }
 }
 
-void scene_model::hard_constraints()
+void scene_model::skydancer::hard_constraints()
 {
     // Fixed positions of the cloth
     for(const auto& constraints : positional_constraints)
@@ -364,7 +377,7 @@ void scene_model::hard_constraints()
 }
 
 
-void scene_model::display_elements(std::map<std::string,GLuint>& shaders, scene_structure& scene, gui_structure& )
+void scene_model::skydancer::display_elements(std::map<std::string,GLuint>& shaders, scene_structure& scene, gui_structure& )
 {
     glEnable( GL_POLYGON_OFFSET_FILL );
 
@@ -393,14 +406,18 @@ void scene_model::display_elements(std::map<std::string,GLuint>& shaders, scene_
 
     sphere.uniform.color = {1,0,0};
 
+}
+
+void scene_model::display_ground(scene_structure& scene, gui_structure&)
+{
     // Display ground
-    draw(ground, scene.camera);
+    draw(skydancers[0].ground, scene.camera);
     glBindTexture(GL_TEXTURE_2D, scene.texture_white);
 }
 
 
 // Automatic detection of divergence: stop the simulation if detected
-void scene_model::detect_simulation_divergence()
+void scene_model::skydancer::detect_simulation_divergence(vcl::timer_event timer)
 {
     const size_t NN = position.size();
     for(size_t k=0; simulation_diverged==false && k<NN; ++k)
@@ -442,35 +459,42 @@ void scene_model::set_gui()
     ImGui::SliderFloat("Time scale", &timer.scale, 0.05f, 2.0f, "%.2f s");
     size_t resolution_min = 3u;
     size_t resolution_max = 50u;
-    ImGui::SliderScalar("Resolution", ImGuiDataType_U64, &resolution, &resolution_min, &resolution_max);
+    ImGui::SliderScalar("Resolution", ImGuiDataType_U64, &skydancers[0].resolution, &resolution_min, &resolution_max);
 
-    ImGui::SliderFloat("Stiffness", &user_parameters.K, 1.0f, 3000.0f, "%.2f");
-    ImGui::SliderFloat("Damping", &user_parameters.mu, 0.0f, 0.1f, "%.3f");
-    ImGui::SliderFloat("Mass", &user_parameters.m, 1.0f, 15.0f, "%.2f");
-    ImGui::SliderFloat("Wind", &user_parameters.wind, 0.0f, 30.0f, "%.2f");
-    ImGui::SliderFloat("Pressure", &user_parameters.pressure, 0.0f, 30.0f, "%.2f");
+    ImGui::SliderFloat("Stiffness", &skydancers[0].user_parameters.K, 1.0f, 3000.0f, "%.2f");
+    ImGui::SliderFloat("Damping", &skydancers[0].user_parameters.mu, 0.0f, 0.1f, "%.3f");
+    ImGui::SliderFloat("Mass", &skydancers[0].user_parameters.m, 1.0f, 15.0f, "%.2f");
+    ImGui::SliderFloat("Wind", &skydancers[0].user_parameters.wind, 0.0f, 30.0f, "%.2f");
+    ImGui::SliderFloat("Pressure", &skydancers[0].user_parameters.pressure, 0.0f, 30.0f, "%.2f");
 
-    ImGui::Checkbox("Wireframe",&gui_display_wireframe);
-    ImGui::Checkbox("Texture",&gui_display_texture);
+    ImGui::Checkbox("Wireframe",&skydancers[0].gui_display_wireframe);
+    ImGui::Checkbox("Texture",&skydancers[0].gui_display_texture);
 
     bool const stop  = ImGui::Button("Stop anim"); ImGui::SameLine();
     bool const start = ImGui::Button("Start anim");
 
-    if(stop)  timer.stop();
-    if(start) {
-        if( simulation_diverged )
-            force_simulation=true;
-        timer.start();
-    }
+    skydancers.resize(3);
 
-    if (resolution != old_resolution)
+    for(int i = 0; i < 3; i++)
     {
-        old_resolution = resolution;
-        initialize();
-    }
 
-    bool const restart = ImGui::Button("Restart");
-    if(restart) initialize();
+        if(stop) timer.stop();
+        if(start) {
+            if(skydancers[i].simulation_diverged )
+                skydancers[i].force_simulation=true;
+            timer.start();
+        }
+
+        if (skydancers[i].resolution != skydancers[i].old_resolution)
+        {
+            skydancers[i].old_resolution = skydancers[i].resolution;
+
+            skydancers[i].initialize(i);
+        }
+
+        bool const restart = ImGui::Button("Restart");
+        if(restart) skydancers[i].initialize(i);
+    }
 }
 
 
